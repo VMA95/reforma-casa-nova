@@ -1,6 +1,6 @@
 // ─── GOOGLE DRIVE CONFIG ──────────────────────────────────────
 // Siga o README para obter seu Client ID e cole aqui:
-const GOOGLE_CLIENT_ID = 'SEU_CLIENT_ID.apps.googleusercontent.com';
+const GOOGLE_CLIENT_ID = '689109501553-2qii7gq214e1ds0l7maogug0radm6afr.apps.googleusercontent.com';
 const DRIVE_FOLDER     = 'Reforma Casa Nova';
 const DRIVE_SCOPE      = 'https://www.googleapis.com/auth/drive.file';
 
