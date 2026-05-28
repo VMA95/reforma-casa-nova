@@ -183,8 +183,7 @@ function renderDemands() {
               <button class="btn-card-action btn-card-danger" onclick="askDeleteDemand(${d.id})" aria-label="excluir">✕</button>
             </div>`}
         </div>
-        ${d.desc ? `<div class="demand-desc">${escHtml(d.desc)}</div>` : ''}
-        ${d.link ? `<a href="${escHtml(d.link)}" target="_blank" class="demand-link">🔗 Ver referência</a>` : ''}
+        ${d.desc ? `<div class="demand-desc">${linkifyText(d.desc)}</div>` : ''}
         ${mediaHtml}
         <div class="demand-meta">📅 ${d.date}</div>
       </div>`;
@@ -203,7 +202,6 @@ function openAddDemand() {
   document.getElementById('demand-save-btn').textContent   = 'Salvar demanda';
   document.getElementById('inp-title').value = '';
   document.getElementById('inp-desc').value  = '';
-  document.getElementById('inp-link').value  = '';
   uploadedMedia = [];
   isUploading   = false;
   renderMediaArea();
@@ -220,7 +218,6 @@ function openEditDemand(id) {
   document.getElementById('demand-save-btn').textContent   = 'Salvar alterações';
   document.getElementById('inp-title').value = demand.title;
   document.getElementById('inp-desc').value  = demand.desc || '';
-  document.getElementById('inp-link').value  = demand.link || '';
 
   // Pré-popula com mídia existente (compatível com formato antigo)
   const items = [...(demand.media || [])];
@@ -311,7 +308,6 @@ function saveDemand() {
   if (VIEW_MODE) return;
   const title = document.getElementById('inp-title').value.trim();
   const desc  = document.getElementById('inp-desc').value.trim();
-  const link  = document.getElementById('inp-link').value.trim();
   if (!title)      { document.getElementById('inp-title').focus(); return; }
   if (isUploading) return;
 
@@ -322,7 +318,7 @@ function saveDemand() {
     if (idx !== -1) {
       state.data[currentRoom][idx] = {
         ...state.data[currentRoom][idx],
-        title, desc, link,
+        title, desc,
         media: [...uploadedMedia],
         photo: null,
         video: null
@@ -334,7 +330,7 @@ function saveDemand() {
     const date  = String(today.getDate()).padStart(2,'0') + '/' +
                   String(today.getMonth()+1).padStart(2,'0') + '/' +
                   today.getFullYear();
-    state.data[currentRoom].push({ id: nextId++, title, desc, link, media: [...uploadedMedia], date });
+    state.data[currentRoom].push({ id: nextId++, title, desc, media: [...uploadedMedia], date });
   }
 
   save();
@@ -479,8 +475,7 @@ function renderReport() {
           <span class="report-demand-num">${i + 1}</span>
           <div class="report-demand-body">
             <div class="report-demand-name">${escHtml(d.title)}</div>
-            ${d.desc ? `<div class="report-demand-obs">${escHtml(d.desc)}</div>` : ''}
-            ${d.link ? `<a href="${escHtml(d.link)}" target="_blank" class="report-video-link">🔗 Ver referência</a>` : ''}
+            ${d.desc ? `<div class="report-demand-obs">${linkifyText(d.desc)}</div>` : ''}
             ${photosHtml}
             ${videosHtml}
           </div>
@@ -545,6 +540,16 @@ function escHtml(str) {
   return String(str)
     .replace(/&/g,'&amp;').replace(/</g,'&lt;')
     .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function linkifyText(str) {
+  const escaped = escHtml(str);
+  const urlRegex = /(https?:\/\/[^\s&<>"]+)/g;
+  return escaped
+    .replace(/\n/g, '<br>')
+    .replace(urlRegex, url =>
+      `<a href="${url}" target="_blank" rel="noopener" class="auto-link">${url}</a>`
+    );
 }
 
 // ─── INIT ─────────────────────────────────────────────────────
