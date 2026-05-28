@@ -12,6 +12,11 @@
 
   <div id="app">
 
+    <!-- BANNER MODO VISUALIZAÇÃO -->
+    <div id="view-banner" class="view-banner" style="display:none;">
+      👁 Modo visualização — somente leitura
+    </div>
+
     <!-- HOME -->
     <div id="screen-home" class="screen active">
       <header class="topbar">
@@ -22,7 +27,6 @@
             <div class="app-sub" id="home-sub">carregando…</div>
           </div>
         </div>
-        <button id="drive-status" class="btn-drive-status" onclick="connectDrive()">🔗 Conectar Drive</button>
       </header>
       <div class="content" id="room-list"></div>
     </div>
@@ -32,7 +36,7 @@
       <header class="topbar">
         <button class="btn-back" onclick="showScreen('home')" aria-label="voltar">←</button>
         <div class="topbar-center" id="room-title">Cômodo</div>
-        <button class="btn-icon-top" onclick="openAddDemand()" aria-label="nova demanda">+</button>
+        <button id="room-add-btn" class="btn-icon-top" onclick="openAddDemand()" aria-label="nova demanda">+</button>
       </header>
       <div class="content" id="demand-list"></div>
     </div>
@@ -116,8 +120,16 @@
 
   </div>
 
-  <!-- Google Identity Services (necessário para o Drive) -->
-  <script src="https://accounts.google.com/gsi/client" async></script>
+  <!-- Firebase (sync em tempo real) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
   <script src="app.js"></script>
+
+  <script>
+    // Mostra banner se for modo visualização
+    if (new URLSearchParams(window.location.search).has('view')) {
+      document.getElementById('view-banner').style.display = 'flex';
+    }
+  </script>
 </body>
 </html>

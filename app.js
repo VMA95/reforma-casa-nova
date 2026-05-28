@@ -1,10 +1,26 @@
-// ─── GOOGLE DRIVE CONFIG ──────────────────────────────────────
-// Siga o README para obter seu Client ID e cole aqui:
-const GOOGLE_CLIENT_ID = '689109501553-2qii7gq214e1ds0l7maogug0radm6afr.apps.googleusercontent.com';
-const DRIVE_FOLDER     = 'Reforma Casa Nova';
-const DRIVE_SCOPE      = 'https://www.googleapis.com/auth/drive.file';
+// ─── CLOUDINARY (fotos e vídeos) ──────────────────────────────
+const CLOUDINARY_CLOUD  = 'dvloudsbh';
+const CLOUDINARY_PRESET = 'reforma_uploads';
 
-// ─── ESTADO GLOBAL ────────────────────────────────────────────
+// ─── FIREBASE (sync em tempo real) ────────────────────────────
+// Cole aqui o firebaseConfig após criar o projeto no Firebase:
+const FIREBASE_CONFIG = null;
+// const FIREBASE_CONFIG = {
+//   apiKey: "...", authDomain: "...", projectId: "...",
+//   storageBucket: "...", messagingSenderId: "...", appId: "..."
+// };
+
+let db = null;
+if (FIREBASE_CONFIG && typeof firebase !== 'undefined') {
+  try { firebase.initializeApp(FIREBASE_CONFIG); db = firebase.firestore(); }
+  catch(e) { console.warn('Firebase init error', e); }
+}
+
+// ─── MODO VISUALIZAÇÃO ────────────────────────────────────────
+// Arquiteta acessa: URL + ?view   (ex: vma95.github.io/reforma-casa-nova?view)
+const VIEW_MODE = new URLSearchParams(window.location.search).has('view');
+
+// ─── ESTADO ───────────────────────────────────────────────────
 const STORAGE_KEY = 'reforma_casa_nova_v1';
 
 const EMOJIS = [
@@ -23,236 +39,14 @@ let currentRoom = null;
 let selectedEmoji = EMOJIS[0];
 let nextId      = 1;
 
-// ─── DRIVE: AUTH ──────────────────────────────────────────────
-let _token       = null;
-let _tokenClient = null;
-let _folderId    = null;
-let _stateFileId = null;
-let _lastMod     = null;
-let _syncTimer   = null;
-
-function driveReady() {
-  return GOOGLE_CLIENT_ID !== 'SEU_CLIENT_ID.apps.googleusercontent.com'
-      && typeof google !== 'undefined';
-}
-
-function isConnected() { return !!_token; }
-
-function getToken(forcePicker = false) {
-  return new Promise((resolve, reject) => {
-    if (!driveReady()) { reject(new Error('Client ID não configurado')); return; }
-    if (_token)        { resolve(_token); return; }
-
-    if (!_tokenClient) {
-      _tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: GOOGLE_CLIENT_ID,
-        scope: DRIVE_SCOPE,
-        hint: localStorage.getItem('g_hint') || '',
-        callback: r => {
-          if (r.access_token) {
-            _token = r.access_token;
-            setTimeout(() => { _token = null; }, (r.expires_in - 60) * 1000);
-            resolve(_token);
-          } else {
-            reject(new Error('Auth cancelado'));
-          }
-        }
-      });
-    }
-    _tokenClient.requestAccessToken({ prompt: forcePicker ? 'select_account' : '' });
-  });
-}
-
-// ─── DRIVE: OPERAÇÕES ─────────────────────────────────────────
-async function driveRequest(method, path, { params = {}, json, form } = {}) {
-  const url = new URL('https://www.googleapis.com' + path);
-  Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
-  const token = await getToken();
-  const headers = { Authorization: `Bearer ${token}` };
-  if (json !== undefined) headers['Content-Type'] = 'application/json';
-  const res = await fetch(url, {
-    method,
-    headers,
-    body: json !== undefined ? JSON.stringify(json) : form
-  });
-  if (!res.ok) throw new Error(`Drive ${method} ${path} → ${res.status}`);
-  const text = await res.text();
-  return text ? JSON.parse(text) : null;
-}
-
-async function ensureFolder() {
-  if (_folderId) return _folderId;
-  const q = `name='${DRIVE_FOLDER}' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
-  const res = await driveRequest('GET', '/drive/v3/files', { params: { q, fields: 'files(id)' } });
-  if (res.files?.length) { _folderId = res.files[0].id; return _folderId; }
-  const cr = await driveRequest('POST', '/drive/v3/files', {
-    params: { fields: 'id' },
-    json: { name: DRIVE_FOLDER, mimeType: 'application/vnd.google-apps.folder' }
-  });
-  _folderId = cr.id;
-  return _folderId;
-}
-
-async function makePublic(fileId) {
-  await driveRequest('POST', `/drive/v3/files/${fileId}/permissions`, {
-    json: { role: 'reader', type: 'anyone' }
-  });
-}
-
-async function uploadFile(file) {
-  const token = await getToken();
-  const folderId = await ensureFolder();
-  const safeName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
-
-  const form = new FormData();
-  form.append('metadata', new Blob(
-    [JSON.stringify({ name: safeName, parents: [folderId] })],
-    { type: 'application/json' }
-  ));
-  form.append('file', file);
-
-  const res = await fetch(
-    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
-    { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form }
-  );
-  if (!res.ok) throw new Error(`Upload falhou: ${res.status}`);
-  const { id } = await res.json();
-  await makePublic(id);
-
-  const isVideo = file.type.startsWith('video/');
-  return {
-    url: isVideo
-      ? `https://drive.google.com/file/d/${id}/preview`
-      : `https://drive.google.com/thumbnail?id=${id}&sz=w1600`,
-    type: isVideo ? 'video' : 'image',
-    driveId: id
-  };
-}
-
-// ─── DRIVE: SYNC DE ESTADO ────────────────────────────────────
-async function saveStateToDrive() {
-  if (!isConnected()) return;
-  const token  = _token;
-  const folder = await ensureFolder();
-  const body   = JSON.stringify({ state, nextId });
-
-  if (_stateFileId) {
-    const res = await fetch(
-      `https://www.googleapis.com/upload/drive/v3/files/${_stateFileId}?uploadType=media&fields=modifiedTime`,
-      { method: 'PATCH', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body }
-    );
-    const d = await res.json();
-    _lastMod = d.modifiedTime;
-  } else {
-    const form = new FormData();
-    form.append('metadata', new Blob(
-      [JSON.stringify({ name: 'state.json', parents: [folder] })],
-      { type: 'application/json' }
-    ));
-    form.append('file', new Blob([body], { type: 'application/json' }));
-    const res = await fetch(
-      'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,modifiedTime',
-      { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form }
-    );
-    const d = await res.json();
-    _stateFileId = d.id;
-    _lastMod     = d.modifiedTime;
-  }
-}
-
-async function loadStateFromDrive() {
-  const folder = await ensureFolder();
-  const q      = `name='state.json' and '${folder}' in parents and trashed=false`;
-  const res    = await driveRequest('GET', '/drive/v3/files', {
-    params: { q, fields: 'files(id,modifiedTime)' }
-  });
-
-  if (!res.files?.length) {
-    // Primeira vez no Drive: migra dados locais
-    loadLocal();
-    if (state.rooms.length > 0 || nextId > 1) await saveStateToDrive();
-    return;
-  }
-
-  const file   = res.files[0];
-  _stateFileId = file.id;
-  _lastMod     = file.modifiedTime;
-
-  const r = await fetch(
-    `https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`,
-    { headers: { Authorization: `Bearer ${_token}` } }
-  );
-  const d = await r.json();
-  state   = d.state  || { rooms: [], data: {} };
-  nextId  = d.nextId || 1;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ state, nextId }));
-}
-
-async function pollDrive() {
-  if (!isConnected() || !_stateFileId) return;
-  try {
-    const res = await driveRequest('GET', `/drive/v3/files/${_stateFileId}`, {
-      params: { fields: 'modifiedTime' }
-    });
-    if (res.modifiedTime && res.modifiedTime !== _lastMod) {
-      _lastMod  = res.modifiedTime;
-      const r   = await fetch(
-        `https://www.googleapis.com/drive/v3/files/${_stateFileId}?alt=media`,
-        { headers: { Authorization: `Bearer ${_token}` } }
-      );
-      const d   = await r.json();
-      state     = d.state  || { rooms: [], data: {} };
-      nextId    = d.nextId || 1;
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ state, nextId }));
-      refreshUI();
-    }
-  } catch(e) { /* silencioso */ }
-}
-
-function startPolling() {
-  if (_syncTimer) clearInterval(_syncTimer);
-  _syncTimer = setInterval(pollDrive, 30000); // checa a cada 30s
-}
-
-// ─── DRIVE: CONNECT ───────────────────────────────────────────
-async function connectDrive() {
-  const btn = document.getElementById('drive-status');
-  if (btn) { btn.textContent = '⏳ Conectando…'; btn.disabled = true; }
-  try {
-    await getToken(true);
-    localStorage.setItem('g_hint', 'connected');
-    await loadStateFromDrive();
-    updateDriveStatus(true);
-    startPolling();
-    refreshUI();
-  } catch(e) {
-    console.warn('Drive error:', e);
-    if (btn) { btn.textContent = '🔗 Conectar Drive'; btn.disabled = false; }
-  }
-}
-
-async function trySilentConnect() {
-  if (!driveReady() || !localStorage.getItem('g_hint')) return;
-  try {
-    await getToken(false);         // tentativa silenciosa
-    await loadStateFromDrive();
-    updateDriveStatus(true);
-    startPolling();
-  } catch(e) { /* silencioso — usuário precisa clicar */ }
-}
-
-function updateDriveStatus(connected) {
-  const btn = document.getElementById('drive-status');
-  if (!btn) return;
-  btn.textContent  = connected ? '✅ Drive' : '🔗 Conectar Drive';
-  btn.disabled     = false;
-  btn.classList.toggle('connected', connected);
-}
-
 // ─── PERSISTÊNCIA ─────────────────────────────────────────────
 function save() {
+  if (VIEW_MODE) return;
   localStorage.setItem(STORAGE_KEY, JSON.stringify({ state, nextId }));
-  saveStateToDrive().catch(() => {});
+  if (db) {
+    db.collection('reforma').doc('main').set({ state, nextId })
+      .catch(e => console.warn('Firebase save error', e));
+  }
 }
 
 function loadLocal() {
@@ -297,18 +91,17 @@ function renderHome() {
     total === 1 ? '1 demanda cadastrada' :
     `${total} demandas cadastradas`;
 
-  updateDriveStatus(isConnected());
-
   const list = document.getElementById('room-list');
+
   if (state.rooms.length === 0) {
     list.innerHTML = `
       <div class="empty-state">
         <span class="empty-icon">🏠</span>
-        Nenhum lugar cadastrado ainda.<br>Adicione o primeiro cômodo abaixo.
+        ${VIEW_MODE
+          ? 'Nenhum lugar cadastrado ainda.'
+          : 'Nenhum lugar cadastrado ainda.<br>Adicione o primeiro cômodo abaixo.'}
       </div>
-      <button class="btn-add-room" onclick="openAddRoom()">
-        <span class="plus">+</span> Novo lugar
-      </button>`;
+      ${VIEW_MODE ? '' : `<button class="btn-add-room" onclick="openAddRoom()"><span class="plus">+</span> Novo lugar</button>`}`;
     return;
   }
 
@@ -321,40 +114,41 @@ function renderHome() {
           <div class="room-name">${escHtml(r.name)}</div>
           <div class="room-count">${count === 0 ? 'Nenhuma demanda' : count + ' demanda' + (count !== 1 ? 's' : '')}</div>
         </div>
-        <button class="btn-room-delete" onclick="askDeleteRoom('${r.id}')" aria-label="excluir ${escHtml(r.name)}">🗑</button>
+        ${VIEW_MODE ? '' : `<button class="btn-room-delete" onclick="askDeleteRoom('${r.id}')" aria-label="excluir ${escHtml(r.name)}">🗑</button>`}
       </div>`;
   }).join('');
-  html += `<button class="btn-add-room" onclick="openAddRoom()"><span class="plus">+</span> Novo lugar</button>`;
+
+  if (!VIEW_MODE) {
+    html += `<button class="btn-add-room" onclick="openAddRoom()"><span class="plus">+</span> Novo lugar</button>`;
+  }
+
   list.innerHTML = html;
 }
 
 // ─── CÔMODO ───────────────────────────────────────────────────
 function openRoom(id) {
   currentRoom = id;
-  const room = state.rooms.find(r => r.id === id);
+  const room  = state.rooms.find(r => r.id === id);
   document.getElementById('room-title').textContent = room.icon + '  ' + room.name;
+
+  const addBtn = document.getElementById('room-add-btn');
+  if (addBtn) addBtn.style.display = VIEW_MODE ? 'none' : '';
+
   renderDemands();
   showScreen('room');
-}
-
-function mediaTag(m) {
-  if (m.type === 'video') {
-    // Vídeos do Drive usam iframe; outros usam <video>
-    if (m.url.includes('drive.google.com')) {
-      return `<iframe src="${escHtml(m.url)}" class="demand-media-item drive-video" allowfullscreen frameborder="0"></iframe>`;
-    }
-    return `<video src="${escHtml(m.url)}" class="demand-media-item" controls playsinline></video>`;
-  }
-  return `<img src="${escHtml(m.url)}" class="demand-media-item" alt="" loading="lazy">`;
 }
 
 function renderDemands() {
   const list    = document.getElementById('demand-list');
   const demands = state.data[currentRoom] || [];
+
   if (demands.length === 0) {
-    list.innerHTML = `<div class="empty-state"><span class="empty-icon">📋</span>Nenhuma demanda ainda.<br>Toque no + para adicionar.</div>`;
+    list.innerHTML = `<div class="empty-state"><span class="empty-icon">📋</span>${
+      VIEW_MODE ? 'Nenhuma demanda neste cômodo.' : 'Nenhuma demanda ainda.<br>Toque no + para adicionar.'
+    }</div>`;
     return;
   }
+
   list.innerHTML = demands.map(d => {
     // Compatível com formato antigo (photo/video) e novo (media array)
     const items = [...(d.media || [])];
@@ -364,14 +158,18 @@ function renderDemands() {
     let mediaHtml = '';
     if (items.length > 0) {
       const cls = items.length === 1 ? 'demand-media-grid single' : 'demand-media-grid';
-      mediaHtml = `<div class="${cls}">` + items.map(mediaTag).join('') + '</div>';
+      mediaHtml = `<div class="${cls}">` + items.map(m =>
+        m.type === 'video'
+          ? `<video src="${escHtml(m.url)}" class="demand-media-item" controls playsinline></video>`
+          : `<img src="${escHtml(m.url)}" class="demand-media-item" alt="" loading="lazy">`
+      ).join('') + '</div>';
     }
 
     return `
       <div class="demand-card">
         <div class="demand-header">
           <div class="demand-title">${escHtml(d.title)}</div>
-          <button class="btn-demand-delete" onclick="askDeleteDemand(${d.id})" aria-label="excluir">🗑</button>
+          ${VIEW_MODE ? '' : `<button class="btn-demand-delete" onclick="askDeleteDemand(${d.id})" aria-label="excluir">🗑</button>`}
         </div>
         ${d.desc ? `<div class="demand-desc">${escHtml(d.desc)}</div>` : ''}
         ${mediaHtml}
@@ -385,6 +183,7 @@ let uploadedMedia = [];
 let isUploading   = false;
 
 function openAddDemand() {
+  if (VIEW_MODE) return;
   document.getElementById('inp-title').value = '';
   document.getElementById('inp-desc').value  = '';
   uploadedMedia = [];
@@ -410,26 +209,19 @@ function renderMediaArea() {
   }
 
   if (isUploading) {
-    html += `<div class="upload-loading"><span class="spinner"></span> Enviando para o Drive…</div>`;
+    html += `<div class="upload-loading"><span class="spinner"></span> Enviando…</div>`;
   } else if (uploadedMedia.length === 0) {
-    if (!isConnected() && driveReady()) {
-      html += `<div class="drive-warn">
-        <span>📁 Conecte o Google Drive para salvar fotos</span>
-        <button onclick="connectDrive()">Conectar</button>
-      </div>`;
-    } else {
-      html += `
-        <label class="upload-trigger" for="photo-file-input">
-          <span class="upload-icon">📸</span>
-          <span>Toque para adicionar foto ou vídeo</span>
-          <span class="upload-hint">JPG, PNG, HEIC ou MP4</span>
-        </label>`;
-    }
+    html += `
+      <label class="upload-trigger" for="photo-file-input">
+        <span class="upload-icon">📸</span>
+        <span>Toque para adicionar foto ou vídeo</span>
+        <span class="upload-hint">JPG, PNG, HEIC ou MP4</span>
+      </label>`;
   } else {
     html += `<label class="upload-add-more" for="photo-file-input">+ Adicionar outra foto ou vídeo</label>`;
   }
 
-  if (!isUploading && (isConnected() || uploadedMedia.length > 0)) {
+  if (!isUploading) {
     html += `<input type="file" id="photo-file-input" accept="image/*,video/*" style="display:none" onchange="handleFileSelect(this)">`;
   }
 
@@ -444,26 +236,37 @@ function removeMedia(index) {
 async function handleFileSelect(input) {
   const file = input.files[0];
   if (!file) return;
+  const isVideo = file.type.startsWith('video/');
 
   isUploading = true;
   renderMediaArea();
 
   try {
-    const media = await uploadFile(file);
-    uploadedMedia.push(media);
-  } catch(e) {
-    console.warn('Upload error:', e);
-  }
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', CLOUDINARY_PRESET);
+
+    const resourceType = isVideo ? 'video' : 'image';
+    const res  = await fetch(
+      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/${resourceType}/upload`,
+      { method: 'POST', body: formData }
+    );
+    const data = await res.json();
+    if (data.secure_url) {
+      uploadedMedia.push({ url: data.secure_url, type: resourceType });
+    }
+  } catch(e) { /* silencioso */ }
 
   isUploading = false;
   renderMediaArea();
 }
 
 function saveDemand() {
+  if (VIEW_MODE) return;
   const title = document.getElementById('inp-title').value.trim();
   const desc  = document.getElementById('inp-desc').value.trim();
-  if (!title)       { document.getElementById('inp-title').focus(); return; }
-  if (isUploading)  return;
+  if (!title)      { document.getElementById('inp-title').focus(); return; }
+  if (isUploading) return;
 
   const today = new Date();
   const date  = String(today.getDate()).padStart(2,'0') + '/' +
@@ -480,6 +283,7 @@ function saveDemand() {
 
 // ─── EXCLUSÃO ─────────────────────────────────────────────────
 function askDeleteDemand(id) {
+  if (VIEW_MODE) return;
   openConfirm(
     'Excluir demanda',
     'Tem certeza que quer excluir essa demanda? Essa ação não pode ser desfeita.',
@@ -491,6 +295,7 @@ function askDeleteDemand(id) {
 }
 
 function askDeleteRoom(id) {
+  if (VIEW_MODE) return;
   const room  = state.rooms.find(r => r.id === id);
   const count = (state.data[id] || []).length;
   const msg   = count > 0
@@ -505,6 +310,7 @@ function askDeleteRoom(id) {
 
 // ─── NOVO CÔMODO ──────────────────────────────────────────────
 function openAddRoom() {
+  if (VIEW_MODE) return;
   selectedEmoji = EMOJIS[0];
   document.getElementById('room-name-inp').value = '';
   const grid = document.getElementById('emoji-grid');
@@ -522,6 +328,7 @@ function selectEmoji(emoji, el) {
 }
 
 function saveRoom() {
+  if (VIEW_MODE) return;
   const name = document.getElementById('room-name-inp').value.trim();
   if (!name) { document.getElementById('room-name-inp').focus(); return; }
   const id = 'room_' + Date.now();
@@ -565,15 +372,35 @@ function renderReport() {
     if (!demands.length) return;
     html += `<div class="report-room"><div class="report-room-title">${r.icon}  ${escHtml(r.name)}</div>`;
     demands.forEach(d => {
-      html += `<div class="report-row"><span>${escHtml(d.title)}</span><span>${d.date}</span></div>`;
+      const items = [...(d.media || [])];
+      if (d.photo && !items.find(m => m.url === d.photo)) items.unshift({ url: d.photo, type: 'image' });
+
+      let photosHtml = '';
+      const images = items.filter(m => m.type === 'image');
+      if (images.length) {
+        photosHtml = `<div class="report-photos">` +
+          images.map(m => `<img src="${escHtml(m.url)}" class="report-photo" alt="" loading="lazy">`).join('') +
+          `</div>`;
+      }
+
+      html += `<div class="report-demand">
+        <div class="report-row">
+          <span class="report-demand-title">${escHtml(d.title)}</span>
+          <span class="report-date">${d.date}</span>
+        </div>
+        ${d.desc ? `<div class="report-demand-desc">${escHtml(d.desc)}</div>` : ''}
+        ${photosHtml}
+      </div>`;
     });
     html += `</div>`;
   });
 
-  html += `<div class="export-area">
-    <strong>Como compartilhar com a arquiteta</strong>
-    Use o botão de compartilhar do seu navegador → "Imprimir" → salvar como PDF.
-  </div>`;
+  if (!VIEW_MODE) {
+    html += `<div class="export-area">
+      <strong>Como compartilhar com a arquiteta</strong>
+      Use o botão de compartilhar do seu navegador → "Imprimir" → salvar como PDF.
+    </div>`;
+  }
 
   container.innerHTML = html;
 }
@@ -588,9 +415,27 @@ function escHtml(str) {
 }
 
 // ─── INIT ─────────────────────────────────────────────────────
-loadLocal();
-refreshUI();
-renderMediaArea();
+if (VIEW_MODE) document.body.classList.add('view-mode');
 
-// Tenta conectar silenciosamente se já conectou antes
-window.addEventListener('load', () => trySilentConnect().then(refreshUI).catch(() => {}));
+if (db) {
+  db.collection('reforma').doc('main').onSnapshot(
+    doc => {
+      if (doc.exists) {
+        const d = doc.data();
+        state  = d.state  || { rooms: [], data: {} };
+        nextId = d.nextId || 1;
+        if (!VIEW_MODE) localStorage.setItem(STORAGE_KEY, JSON.stringify({ state, nextId }));
+      } else if (!VIEW_MODE) {
+        loadLocal();
+        if (state.rooms.length > 0) save();
+      }
+      refreshUI();
+    },
+    err => { console.warn('Firebase error:', err); loadLocal(); refreshUI(); }
+  );
+} else {
+  loadLocal();
+  refreshUI();
+}
+
+renderMediaArea();
