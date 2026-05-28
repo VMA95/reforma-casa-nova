@@ -123,7 +123,7 @@ async function uploadFile(file) {
   return {
     url: isVideo
       ? `https://drive.google.com/file/d/${id}/preview`
-      : `https://drive.google.com/uc?id=${id}&export=view`,
+      : `https://drive.google.com/thumbnail?id=${id}&sz=w1600`,
     type: isVideo ? 'video' : 'image',
     driveId: id
   };
