@@ -161,11 +161,16 @@ function renderDemands() {
     let mediaHtml = '';
     if (items.length > 0) {
       const cls = items.length === 1 ? 'demand-media-grid single' : 'demand-media-grid';
-      mediaHtml = `<div class="${cls}">` + items.map(m =>
-        m.type === 'video'
-          ? `<video src="${escHtml(m.url)}" class="demand-media-item" controls playsinline></video>`
-          : `<img src="${escHtml(m.url)}" class="demand-media-item" alt="" loading="lazy">`
-      ).join('') + '</div>';
+      mediaHtml = `<div class="${cls}">` + items.map((m, idx) => {
+        const key = escHtml(m.url);
+        if (m.type === 'video') {
+          return `<div class="media-wrap" onclick="openLightbox('${key}','video')">
+            <video src="${key}" class="demand-media-item" playsinline muted></video>
+            <div class="play-overlay">▶</div>
+          </div>`;
+        }
+        return `<img src="${key}" class="demand-media-item" alt="" loading="lazy" onclick="openLightbox('${key}','image')" style="cursor:pointer">`;
+      }).join('') + '</div>';
     }
 
     return `
@@ -409,6 +414,25 @@ function renderReport() {
 }
 
 function exportReport() { window.print(); }
+
+// ─── LIGHTBOX ─────────────────────────────────────────────────
+function openLightbox(url, type) {
+  const content = document.getElementById('lightbox-content');
+  content.innerHTML = type === 'video'
+    ? `<video src="${url}" class="lightbox-media" controls autoplay playsinline></video>`
+    : `<img src="${url}" class="lightbox-media" alt="">`;
+  document.getElementById('lightbox').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function closeLightbox(e) {
+  if (e && e.target === document.getElementById('lightbox-content')) return;
+  if (e && e.target.closest('.lightbox-content')) return;
+  const lb = document.getElementById('lightbox');
+  lb.style.display = 'none';
+  document.getElementById('lightbox-content').innerHTML = '';
+  document.body.style.overflow = '';
+}
 
 // ─── UTILITÁRIOS ──────────────────────────────────────────────
 function escHtml(str) {
