@@ -187,27 +187,33 @@ html, body {
 /* CARD ACTION BUTTONS (editar / excluir) */
 .card-actions {
   display: flex;
-  gap: 2px;
+  gap: 6px;
   flex-shrink: 0;
 }
 .btn-card-action {
-  background: none;
+  background: var(--accent-light);
   border: none;
   cursor: pointer;
-  color: #D0D0D0;
-  font-size: 15px;
-  width: 28px;
-  height: 28px;
+  color: var(--accent);
+  font-size: 17px;
+  width: 34px;
+  height: 34px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-sm);
-  transition: background 0.15s, color 0.15s;
+  transition: background 0.15s, color 0.15s, transform 0.1s;
   flex-shrink: 0;
   line-height: 1;
+  font-weight: 600;
 }
-.btn-card-action:hover     { background: var(--bg-secondary); color: var(--text-muted); }
-.btn-card-danger:hover     { background: var(--danger-light); color: var(--danger); }
+.btn-card-action:hover  { background: #D6EEE2; }
+.btn-card-action:active { transform: scale(0.93); }
+.btn-card-danger {
+  background: var(--danger-light);
+  color: var(--danger);
+}
+.btn-card-danger:hover { background: #FCDBD8; }
 
 /* ADD ROOM BUTTON */
 .btn-add-room {
