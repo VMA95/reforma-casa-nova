@@ -588,8 +588,6 @@ textarea { height: 96px; resize: none; line-height: 1.55; }
 .report-photo-full {
   width: 100%;
   height: auto;
-  max-height: 260px;
-  object-fit: cover;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
   display: block;
@@ -602,8 +600,7 @@ textarea { height: 96px; resize: none; line-height: 1.55; }
 }
 .report-photo-grid {
   width: 100%;
-  aspect-ratio: 4/3;
-  object-fit: cover;
+  height: auto;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
   display: block;
@@ -640,8 +637,7 @@ textarea { height: 96px; resize: none; line-height: 1.55; }
   .report-doc-title  { font-size: 26px !important; }
   .report-section    { break-inside: avoid; }
   .report-demand-block { break-inside: avoid; }
-  .report-photo-full { max-height: 200px !important; }
-  .report-photo-grid { aspect-ratio: 4/3 !important; }
+  .report-photo-full, .report-photo-grid { height: auto !important; }
 }
 
 /* UPLOAD */
