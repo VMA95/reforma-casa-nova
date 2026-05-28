@@ -414,13 +414,22 @@ function openConfirm(title, msg, cb) {
 function renderReport() {
   const total     = state.rooms.reduce((s, r) => s + (state.data[r.id] || []).length, 0);
   const container = document.getElementById('report-content');
+  const now       = new Date();
+  const dateStr   = String(now.getDate()).padStart(2,'0') + '/' +
+                    String(now.getMonth()+1).padStart(2,'0') + '/' +
+                    now.getFullYear();
 
-  let html = `<div class="report-header">
-    ${total === 0 ? 'Nenhuma demanda cadastrada.' : `${total} demanda${total !== 1 ? 's' : ''} no total`}
-  </div>`;
+  let html = `
+    <div class="report-doc">
+      <div class="report-doc-header">
+        <div class="report-doc-title">Reforma Casa Nova</div>
+        <div class="report-doc-meta">Relatório de demandas · ${dateStr}</div>
+        <div class="report-doc-divider"></div>
+      </div>`;
 
   if (total === 0) {
     html += `<div class="empty-state"><span class="empty-icon">📋</span>Adicione demandas para gerar o relatório.</div>`;
+    html += `</div>`;
     container.innerHTML = html;
     return;
   }
@@ -428,35 +437,48 @@ function renderReport() {
   state.rooms.forEach(r => {
     const demands = state.data[r.id] || [];
     if (!demands.length) return;
-    html += `<div class="report-room"><div class="report-room-title">${r.icon}  ${escHtml(r.name)}</div>`;
-    demands.forEach(d => {
-      const items = [...(d.media || [])];
+
+    html += `<div class="report-section">
+      <div class="report-section-title">${r.icon} ${escHtml(r.name)}</div>`;
+
+    demands.forEach((d, i) => {
+      const items  = [...(d.media || [])];
       if (d.photo && !items.find(m => m.url === d.photo)) items.unshift({ url: d.photo, type: 'image' });
+      const images = items.filter(m => m.type === 'image');
 
       let photosHtml = '';
-      const images = items.filter(m => m.type === 'image');
-      if (images.length) {
-        photosHtml = `<div class="report-photos">` +
-          images.map(m => `<img src="${escHtml(m.url)}" class="report-photo" alt="" loading="lazy">`).join('') +
+      if (images.length === 1) {
+        photosHtml = `<div class="report-photos-full">
+          <img src="${escHtml(images[0].url)}" class="report-photo-full" alt="" loading="lazy">
+        </div>`;
+      } else if (images.length > 1) {
+        photosHtml = `<div class="report-photos-grid">` +
+          images.map(m => `<img src="${escHtml(m.url)}" class="report-photo-grid" alt="" loading="lazy">`).join('') +
           `</div>`;
       }
 
-      html += `<div class="report-demand">
-        <div class="report-row">
-          <span class="report-demand-title">${escHtml(d.title)}</span>
-          <span class="report-date">${d.date}</span>
+      html += `<div class="report-demand-block${i > 0 ? ' has-border' : ''}">
+        <div class="report-demand-row">
+          <span class="report-demand-num">${i + 1}</span>
+          <div class="report-demand-body">
+            <div class="report-demand-name">${escHtml(d.title)}</div>
+            ${d.desc ? `<div class="report-demand-obs">${escHtml(d.desc)}</div>` : ''}
+            ${photosHtml}
+          </div>
+          <span class="report-demand-date">${d.date}</span>
         </div>
-        ${d.desc ? `<div class="report-demand-desc">${escHtml(d.desc)}</div>` : ''}
-        ${photosHtml}
       </div>`;
     });
+
     html += `</div>`;
   });
 
+  html += `</div>`;
+
   if (!VIEW_MODE) {
-    html += `<div class="export-area">
-      <strong>Como compartilhar com a arquiteta</strong>
-      Use o botão de compartilhar do seu navegador → "Imprimir" → salvar como PDF.
+    html += `<div class="export-hint">
+      <strong>Exportar como PDF</strong>
+      Toque no botão ↓ acima → "Imprimir" → salvar como PDF → enviar para a arquiteta.
     </div>`;
   }
 

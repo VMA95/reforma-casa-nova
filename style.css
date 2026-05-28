@@ -493,76 +493,156 @@ textarea { height: 96px; resize: none; line-height: 1.55; }
 .emoji-opt:hover    { background: var(--bg-secondary); }
 .emoji-opt.selected { border-color: var(--accent); background: var(--accent-light); }
 
-/* REPORT */
-.report-header {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-hint);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  margin-bottom: 16px;
-}
-.report-room {
-  background: var(--bg-card);
+/* REPORT — documento estilo A4 */
+.report-doc {
+  background: #fff;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  padding: 18px;
-  margin-bottom: 10px;
-  box-shadow: var(--shadow-xs);
+  padding: 28px 24px;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 12px;
 }
-.report-room-title {
-  font-size: 15px;
+
+/* Cabeçalho do documento */
+.report-doc-header    { margin-bottom: 20px; }
+.report-doc-title {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  color: var(--text);
+  letter-spacing: -0.02em;
+}
+.report-doc-meta {
+  font-size: 12px;
+  color: var(--text-hint);
+  margin-top: 4px;
+  font-weight: 500;
+}
+.report-doc-divider {
+  height: 2px;
+  background: var(--accent);
+  margin-top: 14px;
+  border-radius: 2px;
+  opacity: 0.25;
+}
+
+/* Seção de cômodo */
+.report-section       { margin-bottom: 24px; }
+.report-section-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding-bottom: 8px;
+  border-bottom: 1.5px solid var(--accent-light);
+  margin-bottom: 12px;
+}
+
+/* Bloco de demanda */
+.report-demand-block         { padding: 10px 0; }
+.report-demand-block.has-border { border-top: 1px solid var(--border); }
+.report-demand-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.report-demand-num {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  background: var(--accent-light);
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.report-demand-body   { flex: 1; min-width: 0; }
+.report-demand-name {
+  font-size: 14px;
   font-weight: 600;
   color: var(--text);
-  padding-bottom: 12px;
-  margin-bottom: 8px;
-  border-bottom: 1px solid var(--border);
   letter-spacing: -0.01em;
+  line-height: 1.4;
 }
-.report-demand {
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border);
+.report-demand-obs {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
+  line-height: 1.6;
 }
-.report-demand:last-child { border-bottom: none; padding-bottom: 0; }
-.report-demand-title { font-size: 14px; color: var(--text); font-weight: 500; }
-.report-demand-desc  { font-size: 12px; color: var(--text-muted); margin-top: 4px; line-height: 1.5; }
-.report-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 8px;
-}
-.report-date {
+.report-demand-date {
   font-size: 11px;
   color: var(--text-hint);
   white-space: nowrap;
   flex-shrink: 0;
   font-weight: 500;
+  margin-top: 3px;
 }
-.report-photos {
-  display: flex;
-  gap: 6px;
-  margin-top: 10px;
-  flex-wrap: wrap;
-}
-.report-photo {
-  width: 76px;
-  height: 76px;
+
+/* Fotos no relatório */
+.report-photos-full   { margin-top: 10px; }
+.report-photo-full {
+  width: 100%;
+  height: auto;
+  max-height: 260px;
   object-fit: cover;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
+  display: block;
 }
-.export-area {
+.report-photos-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+  margin-top: 10px;
+}
+.report-photo-grid {
+  width: 100%;
+  aspect-ratio: 4/3;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  display: block;
+}
+
+/* Dica de exportar */
+.export-hint {
   background: var(--bg-secondary);
   border-radius: var(--radius-lg);
-  padding: 18px;
+  padding: 16px 18px;
   margin-bottom: 10px;
   font-size: 13px;
   color: var(--text-muted);
   line-height: 1.6;
   border: 1px solid var(--border);
 }
-.export-area strong { color: var(--text); display: block; margin-bottom: 4px; font-weight: 600; }
+.export-hint strong { color: var(--text); display: block; margin-bottom: 4px; font-weight: 600; }
+
+/* ─── IMPRESSÃO A4 ─────────────────────────────────────────── */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 18mm 15mm 18mm 15mm;
+  }
+
+  html, body         { background: #fff !important; }
+  #app               { max-width: 100% !important; box-shadow: none !important; height: auto !important; overflow: visible !important; }
+  .screen            { display: none !important; }
+  #screen-report     { display: block !important; height: auto !important; overflow: visible !important; }
+  .topbar, .nav-bottom, .view-banner, .export-hint { display: none !important; }
+  .content           { padding: 0 !important; overflow: visible !important; height: auto !important; padding-bottom: 0 !important; }
+
+  .report-doc        { border: none !important; box-shadow: none !important; padding: 0 !important; border-radius: 0 !important; }
+  .report-doc-title  { font-size: 26px !important; }
+  .report-section    { break-inside: avoid; }
+  .report-demand-block { break-inside: avoid; }
+  .report-photo-full { max-height: 200px !important; }
+  .report-photo-grid { aspect-ratio: 4/3 !important; }
+}
 
 /* UPLOAD */
 .upload-trigger {
