@@ -2,6 +2,27 @@
 const CLOUDINARY_CLOUD = 'dvloudsbh';
 const CLOUDINARY_PRESET = 'reforma_uploads';
 
+// ─── FIREBASE (sync entre dispositivos) ───────────────────────
+// Para sincronizar celular ↔ PC, siga o README e cole sua config aqui:
+const FIREBASE_CONFIG = null;
+// Exemplo do que colocar:
+// const FIREBASE_CONFIG = {
+//   apiKey: "AIza...",
+//   authDomain: "meu-projeto.firebaseapp.com",
+//   projectId: "meu-projeto",
+//   storageBucket: "meu-projeto.appspot.com",
+//   messagingSenderId: "123456789",
+//   appId: "1:123456789:web:abc123"
+// };
+
+let db = null;
+if (FIREBASE_CONFIG && typeof firebase !== 'undefined') {
+  try {
+    firebase.initializeApp(FIREBASE_CONFIG);
+    db = firebase.firestore();
+  } catch(e) { console.warn('Firebase init error', e); }
+}
+
 // ─── ESTADO ───────────────────────────────────────────────────
 const STORAGE_KEY = 'reforma_casa_nova_v1';
 
@@ -25,9 +46,13 @@ let nextId = 1;
 // ─── PERSISTÊNCIA ─────────────────────────────────────────────
 function save() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({ state, nextId }));
+  if (db) {
+    db.collection('reforma').doc('main').set({ state, nextId })
+      .catch(e => console.warn('Firebase save error', e));
+  }
 }
 
-function load() {
+function loadLocal() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
@@ -59,10 +84,11 @@ function goTab(name) {
 // ─── HOME ─────────────────────────────────────────────────────
 function renderHome() {
   const total = state.rooms.reduce((s, r) => s + (state.data[r.id] || []).length, 0);
+  const syncBadge = db ? ' · 🔄 sincronizado' : '';
   document.getElementById('home-sub').textContent =
-    total === 0 ? 'nenhuma demanda ainda' :
+    (total === 0 ? 'nenhuma demanda ainda' :
     total === 1 ? '1 demanda cadastrada' :
-    `${total} demandas cadastradas`;
+    `${total} demandas cadastradas`) + syncBadge;
 
   const list = document.getElementById('room-list');
   if (state.rooms.length === 0) {
@@ -110,12 +136,21 @@ function renderDemands() {
     return;
   }
   list.innerHTML = demands.map(d => {
-    let photoHtml = '';
-    if (d.video) {
-      photoHtml = `<div class="demand-photo"><video src="${escHtml(d.video)}" controls playsinline class="demand-video"></video></div>`;
-    } else if (d.photo) {
-      photoHtml = `<div class="demand-photo"><img src="${escHtml(d.photo)}" alt="foto da demanda" loading="lazy"></div>`;
+    // Suporta formato antigo (photo/video) e novo (media array)
+    const items = [...(d.media || [])];
+    if (d.photo && !items.find(m => m.url === d.photo)) items.unshift({ url: d.photo, type: 'image' });
+    if (d.video && !items.find(m => m.url === d.video)) items.push({ url: d.video, type: 'video' });
+
+    let mediaHtml = '';
+    if (items.length > 0) {
+      const cls = items.length === 1 ? 'demand-media-grid single' : 'demand-media-grid';
+      mediaHtml = `<div class="${cls}">` + items.map(m =>
+        m.type === 'video'
+          ? `<video src="${escHtml(m.url)}" class="demand-media-item" controls playsinline></video>`
+          : `<img src="${escHtml(m.url)}" class="demand-media-item" alt="" loading="lazy">`
+      ).join('') + '</div>';
     }
+
     return `
       <div class="demand-card">
         <div class="demand-header">
@@ -123,62 +158,73 @@ function renderDemands() {
           <button class="btn-demand-delete" onclick="askDeleteDemand(${d.id})" aria-label="excluir">🗑</button>
         </div>
         ${d.desc ? `<div class="demand-desc">${escHtml(d.desc)}</div>` : ''}
-        ${photoHtml}
+        ${mediaHtml}
         <div class="demand-meta">📅 ${d.date}</div>
       </div>`;
   }).join('');
 }
 
 // ─── ADICIONAR DEMANDA ────────────────────────────────────────
-let uploadedMediaUrl = null;
-let uploadedMediaType = null; // 'image' ou 'video'
+let uploadedMedia = [];
+let isUploading = false;
 
 function openAddDemand() {
   document.getElementById('inp-title').value = '';
   document.getElementById('inp-desc').value = '';
-  uploadedMediaUrl = null;
-  uploadedMediaType = null;
-  renderPhotoArea(null, null);
+  uploadedMedia = [];
+  isUploading = false;
+  renderMediaArea();
   showScreen('add-demand');
 }
 
-function renderPhotoArea(url, type) {
+function renderMediaArea() {
   const area = document.getElementById('photo-upload-area');
-  if (url && type === 'video') {
-    area.innerHTML = `
-      <div class="photo-preview-wrap">
-        <video src="${url}" class="photo-preview-img" controls playsinline></video>
-        <button class="btn-remove-photo" onclick="removePhoto()">✕ Remover</button>
-      </div>`;
-  } else if (url) {
-    area.innerHTML = `
-      <div class="photo-preview-wrap">
-        <img src="${url}" class="photo-preview-img" alt="foto enviada">
-        <button class="btn-remove-photo" onclick="removePhoto()">✕ Remover</button>
-      </div>`;
-  } else {
-    area.innerHTML = `
+  if (!area) return;
+  let html = '';
+
+  if (uploadedMedia.length > 0) {
+    html += '<div class="media-preview-grid">';
+    uploadedMedia.forEach((m, i) => {
+      const thumb = m.type === 'video'
+        ? `<video src="${m.url}" class="media-thumb"></video>`
+        : `<img src="${m.url}" class="media-thumb" alt="">`;
+      html += `<div class="media-thumb-wrap">${thumb}<button class="btn-remove-media" onclick="removeMedia(${i})">✕</button></div>`;
+    });
+    html += '</div>';
+  }
+
+  if (isUploading) {
+    html += `<div class="upload-loading"><span class="spinner"></span> Enviando…</div>`;
+  } else if (uploadedMedia.length === 0) {
+    html += `
       <label class="upload-trigger" for="photo-file-input">
         <span class="upload-icon">📸</span>
         <span>Toque para adicionar foto ou vídeo</span>
         <span class="upload-hint">JPG, PNG, HEIC ou MP4</span>
-      </label>
-      <input type="file" id="photo-file-input" accept="image/*,video/*" style="display:none" onchange="handleFileSelect(this)">`;
+      </label>`;
+  } else {
+    html += `<label class="upload-add-more" for="photo-file-input">+ Adicionar outra foto ou vídeo</label>`;
   }
+
+  if (!isUploading) {
+    html += `<input type="file" id="photo-file-input" accept="image/*,video/*" style="display:none" onchange="handleFileSelect(this)">`;
+  }
+
+  area.innerHTML = html;
 }
 
-function removePhoto() {
-  uploadedMediaUrl = null;
-  uploadedMediaType = null;
-  renderPhotoArea(null, null);
+function removeMedia(index) {
+  uploadedMedia.splice(index, 1);
+  renderMediaArea();
 }
 
 async function handleFileSelect(input) {
   const file = input.files[0];
   if (!file) return;
   const isVideo = file.type.startsWith('video/');
-  const area = document.getElementById('photo-upload-area');
-  area.innerHTML = `<div class="upload-loading"><span class="spinner"></span> Enviando ${isVideo ? 'vídeo' : 'foto'}…</div>`;
+
+  isUploading = true;
+  renderMediaArea();
 
   try {
     const formData = new FormData();
@@ -192,21 +238,21 @@ async function handleFileSelect(input) {
     });
     const data = await res.json();
     if (data.secure_url) {
-      uploadedMediaUrl = data.secure_url;
-      uploadedMediaType = resourceType;
-      renderPhotoArea(uploadedMediaUrl, uploadedMediaType);
-    } else {
-      area.innerHTML = `<div class="upload-error">Erro ao enviar. <button onclick="renderPhotoArea(null,null)">Tentar de novo</button></div>`;
+      uploadedMedia.push({ url: data.secure_url, type: resourceType });
     }
   } catch(e) {
-    area.innerHTML = `<div class="upload-error">Sem conexão. <button onclick="renderPhotoArea(null,null)">Tentar de novo</button></div>`;
+    // silently fail, user can try again
   }
+
+  isUploading = false;
+  renderMediaArea();
 }
 
 function saveDemand() {
   const title = document.getElementById('inp-title').value.trim();
   const desc = document.getElementById('inp-desc').value.trim();
   if (!title) { document.getElementById('inp-title').focus(); return; }
+  if (isUploading) return;
 
   const today = new Date();
   const date = String(today.getDate()).padStart(2,'0') + '/' +
@@ -216,8 +262,7 @@ function saveDemand() {
   if (!state.data[currentRoom]) state.data[currentRoom] = [];
   state.data[currentRoom].push({
     id: nextId++, title, desc,
-    photo: uploadedMediaType === 'image' ? uploadedMediaUrl : null,
-    video: uploadedMediaType === 'video' ? uploadedMediaUrl : null,
+    media: [...uploadedMedia],
     date
   });
   save();
@@ -356,6 +401,39 @@ function escHtml(str) {
 }
 
 // ─── INIT ─────────────────────────────────────────────────────
-load();
-renderHome();
-renderPhotoArea(null);
+function refreshUI() {
+  renderHome();
+  const activeId = document.querySelector('.screen.active')?.id;
+  if (activeId === 'screen-room' && currentRoom) renderDemands();
+  if (activeId === 'screen-report') renderReport();
+}
+
+if (db) {
+  db.collection('reforma').doc('main').onSnapshot(
+    doc => {
+      if (doc.exists) {
+        const d = doc.data();
+        state = d.state || { rooms: [], data: {} };
+        nextId = d.nextId || 1;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ state, nextId }));
+      } else {
+        // Primeira vez com Firebase: migra dados do localStorage
+        loadLocal();
+        if (state.rooms.length > 0) {
+          db.collection('reforma').doc('main').set({ state, nextId });
+        }
+      }
+      refreshUI();
+    },
+    err => {
+      console.warn('Firebase error:', err);
+      loadLocal();
+      refreshUI();
+    }
+  );
+} else {
+  loadLocal();
+  refreshUI();
+}
+
+renderMediaArea();
