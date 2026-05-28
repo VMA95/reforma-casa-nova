@@ -22,8 +22,8 @@
             <div class="app-sub" id="home-sub">carregando…</div>
           </div>
         </div>
+        <button id="drive-status" class="btn-drive-status" onclick="connectDrive()">🔗 Conectar Drive</button>
       </header>
-
       <div class="content" id="room-list"></div>
     </div>
 
@@ -54,7 +54,7 @@
           <textarea id="inp-desc" placeholder="Descreva o que você quer fazer…"></textarea>
         </div>
         <div class="field">
-          <label>Foto ou Vídeo <span class="optional">(opcional)</span></label>
+          <label>Fotos / Vídeos <span class="optional">(opcional)</span></label>
           <div id="photo-upload-area"></div>
         </div>
         <button class="btn-primary" onclick="saveDemand()">Salvar demanda</button>
@@ -116,9 +116,8 @@
 
   </div>
 
-  <!-- Firebase: descomente as 2 linhas abaixo após configurar FIREBASE_CONFIG no app.js -->
-  <!-- <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script> -->
-  <!-- <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script> -->
+  <!-- Google Identity Services (necessário para o Drive) -->
+  <script src="https://accounts.google.com/gsi/client" async></script>
   <script src="app.js"></script>
 </body>
 </html>

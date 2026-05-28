@@ -1,29 +1,10 @@
-// ─── CLOUDINARY ───────────────────────────────────────────────
-const CLOUDINARY_CLOUD = 'dvloudsbh';
-const CLOUDINARY_PRESET = 'reforma_uploads';
+// ─── GOOGLE DRIVE CONFIG ──────────────────────────────────────
+// Siga o README para obter seu Client ID e cole aqui:
+const GOOGLE_CLIENT_ID = 'SEU_CLIENT_ID.apps.googleusercontent.com';
+const DRIVE_FOLDER     = 'Reforma Casa Nova';
+const DRIVE_SCOPE      = 'https://www.googleapis.com/auth/drive.file';
 
-// ─── FIREBASE (sync entre dispositivos) ───────────────────────
-// Para sincronizar celular ↔ PC, siga o README e cole sua config aqui:
-const FIREBASE_CONFIG = null;
-// Exemplo do que colocar:
-// const FIREBASE_CONFIG = {
-//   apiKey: "AIza...",
-//   authDomain: "meu-projeto.firebaseapp.com",
-//   projectId: "meu-projeto",
-//   storageBucket: "meu-projeto.appspot.com",
-//   messagingSenderId: "123456789",
-//   appId: "1:123456789:web:abc123"
-// };
-
-let db = null;
-if (FIREBASE_CONFIG && typeof firebase !== 'undefined') {
-  try {
-    firebase.initializeApp(FIREBASE_CONFIG);
-    db = firebase.firestore();
-  } catch(e) { console.warn('Firebase init error', e); }
-}
-
-// ─── ESTADO ───────────────────────────────────────────────────
+// ─── ESTADO GLOBAL ────────────────────────────────────────────
 const STORAGE_KEY = 'reforma_casa_nova_v1';
 
 const EMOJIS = [
@@ -32,44 +13,264 @@ const EMOJIS = [
   '🌿','🍷','🧘','🏡','🪑','🛠️','🎨','🧱',
   '🪞','🏋️','🧳','🌳'
 ];
-
 const BG_COLORS = [
   '#F0EDE6','#E8EFF0','#EEF0E8','#F0E8EE',
   '#E8EEF0','#F0EAE8','#EBF0E8','#F0EDE8'
 ];
 
-let state = { rooms: [], data: {} };
+let state       = { rooms: [], data: {} };
 let currentRoom = null;
 let selectedEmoji = EMOJIS[0];
-let nextId = 1;
+let nextId      = 1;
+
+// ─── DRIVE: AUTH ──────────────────────────────────────────────
+let _token       = null;
+let _tokenClient = null;
+let _folderId    = null;
+let _stateFileId = null;
+let _lastMod     = null;
+let _syncTimer   = null;
+
+function driveReady() {
+  return GOOGLE_CLIENT_ID !== 'SEU_CLIENT_ID.apps.googleusercontent.com'
+      && typeof google !== 'undefined';
+}
+
+function isConnected() { return !!_token; }
+
+function getToken(forcePicker = false) {
+  return new Promise((resolve, reject) => {
+    if (!driveReady()) { reject(new Error('Client ID não configurado')); return; }
+    if (_token)        { resolve(_token); return; }
+
+    if (!_tokenClient) {
+      _tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: GOOGLE_CLIENT_ID,
+        scope: DRIVE_SCOPE,
+        hint: localStorage.getItem('g_hint') || '',
+        callback: r => {
+          if (r.access_token) {
+            _token = r.access_token;
+            setTimeout(() => { _token = null; }, (r.expires_in - 60) * 1000);
+            resolve(_token);
+          } else {
+            reject(new Error('Auth cancelado'));
+          }
+        }
+      });
+    }
+    _tokenClient.requestAccessToken({ prompt: forcePicker ? 'select_account' : '' });
+  });
+}
+
+// ─── DRIVE: OPERAÇÕES ─────────────────────────────────────────
+async function driveRequest(method, path, { params = {}, json, form } = {}) {
+  const url = new URL('https://www.googleapis.com' + path);
+  Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+  const token = await getToken();
+  const headers = { Authorization: `Bearer ${token}` };
+  if (json !== undefined) headers['Content-Type'] = 'application/json';
+  const res = await fetch(url, {
+    method,
+    headers,
+    body: json !== undefined ? JSON.stringify(json) : form
+  });
+  if (!res.ok) throw new Error(`Drive ${method} ${path} → ${res.status}`);
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
+}
+
+async function ensureFolder() {
+  if (_folderId) return _folderId;
+  const q = `name='${DRIVE_FOLDER}' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+  const res = await driveRequest('GET', '/drive/v3/files', { params: { q, fields: 'files(id)' } });
+  if (res.files?.length) { _folderId = res.files[0].id; return _folderId; }
+  const cr = await driveRequest('POST', '/drive/v3/files', {
+    params: { fields: 'id' },
+    json: { name: DRIVE_FOLDER, mimeType: 'application/vnd.google-apps.folder' }
+  });
+  _folderId = cr.id;
+  return _folderId;
+}
+
+async function makePublic(fileId) {
+  await driveRequest('POST', `/drive/v3/files/${fileId}/permissions`, {
+    json: { role: 'reader', type: 'anyone' }
+  });
+}
+
+async function uploadFile(file) {
+  const token = await getToken();
+  const folderId = await ensureFolder();
+  const safeName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+
+  const form = new FormData();
+  form.append('metadata', new Blob(
+    [JSON.stringify({ name: safeName, parents: [folderId] })],
+    { type: 'application/json' }
+  ));
+  form.append('file', file);
+
+  const res = await fetch(
+    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
+    { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form }
+  );
+  if (!res.ok) throw new Error(`Upload falhou: ${res.status}`);
+  const { id } = await res.json();
+  await makePublic(id);
+
+  const isVideo = file.type.startsWith('video/');
+  return {
+    url: isVideo
+      ? `https://drive.google.com/file/d/${id}/preview`
+      : `https://drive.google.com/uc?id=${id}&export=view`,
+    type: isVideo ? 'video' : 'image',
+    driveId: id
+  };
+}
+
+// ─── DRIVE: SYNC DE ESTADO ────────────────────────────────────
+async function saveStateToDrive() {
+  if (!isConnected()) return;
+  const token  = _token;
+  const folder = await ensureFolder();
+  const body   = JSON.stringify({ state, nextId });
+
+  if (_stateFileId) {
+    const res = await fetch(
+      `https://www.googleapis.com/upload/drive/v3/files/${_stateFileId}?uploadType=media&fields=modifiedTime`,
+      { method: 'PATCH', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body }
+    );
+    const d = await res.json();
+    _lastMod = d.modifiedTime;
+  } else {
+    const form = new FormData();
+    form.append('metadata', new Blob(
+      [JSON.stringify({ name: 'state.json', parents: [folder] })],
+      { type: 'application/json' }
+    ));
+    form.append('file', new Blob([body], { type: 'application/json' }));
+    const res = await fetch(
+      'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,modifiedTime',
+      { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form }
+    );
+    const d = await res.json();
+    _stateFileId = d.id;
+    _lastMod     = d.modifiedTime;
+  }
+}
+
+async function loadStateFromDrive() {
+  const folder = await ensureFolder();
+  const q      = `name='state.json' and '${folder}' in parents and trashed=false`;
+  const res    = await driveRequest('GET', '/drive/v3/files', {
+    params: { q, fields: 'files(id,modifiedTime)' }
+  });
+
+  if (!res.files?.length) {
+    // Primeira vez no Drive: migra dados locais
+    loadLocal();
+    if (state.rooms.length > 0 || nextId > 1) await saveStateToDrive();
+    return;
+  }
+
+  const file   = res.files[0];
+  _stateFileId = file.id;
+  _lastMod     = file.modifiedTime;
+
+  const r = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`,
+    { headers: { Authorization: `Bearer ${_token}` } }
+  );
+  const d = await r.json();
+  state   = d.state  || { rooms: [], data: {} };
+  nextId  = d.nextId || 1;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ state, nextId }));
+}
+
+async function pollDrive() {
+  if (!isConnected() || !_stateFileId) return;
+  try {
+    const res = await driveRequest('GET', `/drive/v3/files/${_stateFileId}`, {
+      params: { fields: 'modifiedTime' }
+    });
+    if (res.modifiedTime && res.modifiedTime !== _lastMod) {
+      _lastMod  = res.modifiedTime;
+      const r   = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${_stateFileId}?alt=media`,
+        { headers: { Authorization: `Bearer ${_token}` } }
+      );
+      const d   = await r.json();
+      state     = d.state  || { rooms: [], data: {} };
+      nextId    = d.nextId || 1;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ state, nextId }));
+      refreshUI();
+    }
+  } catch(e) { /* silencioso */ }
+}
+
+function startPolling() {
+  if (_syncTimer) clearInterval(_syncTimer);
+  _syncTimer = setInterval(pollDrive, 30000); // checa a cada 30s
+}
+
+// ─── DRIVE: CONNECT ───────────────────────────────────────────
+async function connectDrive() {
+  const btn = document.getElementById('drive-status');
+  if (btn) { btn.textContent = '⏳ Conectando…'; btn.disabled = true; }
+  try {
+    await getToken(true);
+    localStorage.setItem('g_hint', 'connected');
+    await loadStateFromDrive();
+    updateDriveStatus(true);
+    startPolling();
+    refreshUI();
+  } catch(e) {
+    console.warn('Drive error:', e);
+    if (btn) { btn.textContent = '🔗 Conectar Drive'; btn.disabled = false; }
+  }
+}
+
+async function trySilentConnect() {
+  if (!driveReady() || !localStorage.getItem('g_hint')) return;
+  try {
+    await getToken(false);         // tentativa silenciosa
+    await loadStateFromDrive();
+    updateDriveStatus(true);
+    startPolling();
+  } catch(e) { /* silencioso — usuário precisa clicar */ }
+}
+
+function updateDriveStatus(connected) {
+  const btn = document.getElementById('drive-status');
+  if (!btn) return;
+  btn.textContent  = connected ? '✅ Drive' : '🔗 Conectar Drive';
+  btn.disabled     = false;
+  btn.classList.toggle('connected', connected);
+}
 
 // ─── PERSISTÊNCIA ─────────────────────────────────────────────
 function save() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({ state, nextId }));
-  if (db) {
-    db.collection('reforma').doc('main').set({ state, nextId })
-      .catch(e => console.warn('Firebase save error', e));
-  }
+  saveStateToDrive().catch(() => {});
 }
 
 function loadLocal() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
-      const parsed = JSON.parse(raw);
-      state = parsed.state || { rooms: [], data: {} };
-      nextId = parsed.nextId || 1;
+      const p = JSON.parse(raw);
+      state  = p.state  || { rooms: [], data: {} };
+      nextId = p.nextId || 1;
     }
-  } catch(e) {
-    state = { rooms: [], data: {} };
-  }
+  } catch(e) { state = { rooms: [], data: {} }; }
 }
 
 // ─── NAVEGAÇÃO ────────────────────────────────────────────────
 function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + name).classList.add('active');
-  ['home','report'].forEach(t => {
+  ['home', 'report'].forEach(t => {
     const el = document.getElementById('nav-' + t);
     if (el) el.classList.toggle('active', t === name);
   });
@@ -77,18 +278,26 @@ function showScreen(name) {
 
 function goTab(name) {
   if (name === 'report') renderReport();
-  if (name === 'home') renderHome();
+  if (name === 'home')   renderHome();
   showScreen(name);
+}
+
+function refreshUI() {
+  renderHome();
+  const id = document.querySelector('.screen.active')?.id;
+  if (id === 'screen-room'   && currentRoom) renderDemands();
+  if (id === 'screen-report')               renderReport();
 }
 
 // ─── HOME ─────────────────────────────────────────────────────
 function renderHome() {
   const total = state.rooms.reduce((s, r) => s + (state.data[r.id] || []).length, 0);
-  const syncBadge = db ? ' · 🔄 sincronizado' : '';
   document.getElementById('home-sub').textContent =
-    (total === 0 ? 'nenhuma demanda ainda' :
+    total === 0 ? 'nenhuma demanda ainda' :
     total === 1 ? '1 demanda cadastrada' :
-    `${total} demandas cadastradas`) + syncBadge;
+    `${total} demandas cadastradas`;
+
+  updateDriveStatus(isConnected());
 
   const list = document.getElementById('room-list');
   if (state.rooms.length === 0) {
@@ -128,15 +337,26 @@ function openRoom(id) {
   showScreen('room');
 }
 
+function mediaTag(m) {
+  if (m.type === 'video') {
+    // Vídeos do Drive usam iframe; outros usam <video>
+    if (m.url.includes('drive.google.com')) {
+      return `<iframe src="${escHtml(m.url)}" class="demand-media-item drive-video" allowfullscreen frameborder="0"></iframe>`;
+    }
+    return `<video src="${escHtml(m.url)}" class="demand-media-item" controls playsinline></video>`;
+  }
+  return `<img src="${escHtml(m.url)}" class="demand-media-item" alt="" loading="lazy">`;
+}
+
 function renderDemands() {
-  const list = document.getElementById('demand-list');
+  const list    = document.getElementById('demand-list');
   const demands = state.data[currentRoom] || [];
   if (demands.length === 0) {
     list.innerHTML = `<div class="empty-state"><span class="empty-icon">📋</span>Nenhuma demanda ainda.<br>Toque no + para adicionar.</div>`;
     return;
   }
   list.innerHTML = demands.map(d => {
-    // Suporta formato antigo (photo/video) e novo (media array)
+    // Compatível com formato antigo (photo/video) e novo (media array)
     const items = [...(d.media || [])];
     if (d.photo && !items.find(m => m.url === d.photo)) items.unshift({ url: d.photo, type: 'image' });
     if (d.video && !items.find(m => m.url === d.video)) items.push({ url: d.video, type: 'video' });
@@ -144,11 +364,7 @@ function renderDemands() {
     let mediaHtml = '';
     if (items.length > 0) {
       const cls = items.length === 1 ? 'demand-media-grid single' : 'demand-media-grid';
-      mediaHtml = `<div class="${cls}">` + items.map(m =>
-        m.type === 'video'
-          ? `<video src="${escHtml(m.url)}" class="demand-media-item" controls playsinline></video>`
-          : `<img src="${escHtml(m.url)}" class="demand-media-item" alt="" loading="lazy">`
-      ).join('') + '</div>';
+      mediaHtml = `<div class="${cls}">` + items.map(mediaTag).join('') + '</div>';
     }
 
     return `
@@ -166,13 +382,13 @@ function renderDemands() {
 
 // ─── ADICIONAR DEMANDA ────────────────────────────────────────
 let uploadedMedia = [];
-let isUploading = false;
+let isUploading   = false;
 
 function openAddDemand() {
   document.getElementById('inp-title').value = '';
-  document.getElementById('inp-desc').value = '';
+  document.getElementById('inp-desc').value  = '';
   uploadedMedia = [];
-  isUploading = false;
+  isUploading   = false;
   renderMediaArea();
   showScreen('add-demand');
 }
@@ -186,7 +402,7 @@ function renderMediaArea() {
     html += '<div class="media-preview-grid">';
     uploadedMedia.forEach((m, i) => {
       const thumb = m.type === 'video'
-        ? `<video src="${m.url}" class="media-thumb"></video>`
+        ? `<div class="media-thumb video-ph">🎥</div>`
         : `<img src="${m.url}" class="media-thumb" alt="">`;
       html += `<div class="media-thumb-wrap">${thumb}<button class="btn-remove-media" onclick="removeMedia(${i})">✕</button></div>`;
     });
@@ -194,19 +410,26 @@ function renderMediaArea() {
   }
 
   if (isUploading) {
-    html += `<div class="upload-loading"><span class="spinner"></span> Enviando…</div>`;
+    html += `<div class="upload-loading"><span class="spinner"></span> Enviando para o Drive…</div>`;
   } else if (uploadedMedia.length === 0) {
-    html += `
-      <label class="upload-trigger" for="photo-file-input">
-        <span class="upload-icon">📸</span>
-        <span>Toque para adicionar foto ou vídeo</span>
-        <span class="upload-hint">JPG, PNG, HEIC ou MP4</span>
-      </label>`;
+    if (!isConnected() && driveReady()) {
+      html += `<div class="drive-warn">
+        <span>📁 Conecte o Google Drive para salvar fotos</span>
+        <button onclick="connectDrive()">Conectar</button>
+      </div>`;
+    } else {
+      html += `
+        <label class="upload-trigger" for="photo-file-input">
+          <span class="upload-icon">📸</span>
+          <span>Toque para adicionar foto ou vídeo</span>
+          <span class="upload-hint">JPG, PNG, HEIC ou MP4</span>
+        </label>`;
+    }
   } else {
     html += `<label class="upload-add-more" for="photo-file-input">+ Adicionar outra foto ou vídeo</label>`;
   }
 
-  if (!isUploading) {
+  if (!isUploading && (isConnected() || uploadedMedia.length > 0)) {
     html += `<input type="file" id="photo-file-input" accept="image/*,video/*" style="display:none" onchange="handleFileSelect(this)">`;
   }
 
@@ -221,27 +444,15 @@ function removeMedia(index) {
 async function handleFileSelect(input) {
   const file = input.files[0];
   if (!file) return;
-  const isVideo = file.type.startsWith('video/');
 
   isUploading = true;
   renderMediaArea();
 
   try {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', CLOUDINARY_PRESET);
-
-    const resourceType = isVideo ? 'video' : 'image';
-    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/${resourceType}/upload`, {
-      method: 'POST',
-      body: formData
-    });
-    const data = await res.json();
-    if (data.secure_url) {
-      uploadedMedia.push({ url: data.secure_url, type: resourceType });
-    }
+    const media = await uploadFile(file);
+    uploadedMedia.push(media);
   } catch(e) {
-    // silently fail, user can try again
+    console.warn('Upload error:', e);
   }
 
   isUploading = false;
@@ -250,21 +461,17 @@ async function handleFileSelect(input) {
 
 function saveDemand() {
   const title = document.getElementById('inp-title').value.trim();
-  const desc = document.getElementById('inp-desc').value.trim();
-  if (!title) { document.getElementById('inp-title').focus(); return; }
-  if (isUploading) return;
+  const desc  = document.getElementById('inp-desc').value.trim();
+  if (!title)       { document.getElementById('inp-title').focus(); return; }
+  if (isUploading)  return;
 
   const today = new Date();
-  const date = String(today.getDate()).padStart(2,'0') + '/' +
-               String(today.getMonth()+1).padStart(2,'0') + '/' +
-               today.getFullYear();
+  const date  = String(today.getDate()).padStart(2,'0') + '/' +
+                String(today.getMonth()+1).padStart(2,'0') + '/' +
+                today.getFullYear();
 
   if (!state.data[currentRoom]) state.data[currentRoom] = [];
-  state.data[currentRoom].push({
-    id: nextId++, title, desc,
-    media: [...uploadedMedia],
-    date
-  });
+  state.data[currentRoom].push({ id: nextId++, title, desc, media: [...uploadedMedia], date });
   save();
   renderDemands();
   renderHome();
@@ -278,24 +485,21 @@ function askDeleteDemand(id) {
     'Tem certeza que quer excluir essa demanda? Essa ação não pode ser desfeita.',
     () => {
       state.data[currentRoom] = (state.data[currentRoom] || []).filter(d => d.id !== id);
-      save();
-      renderDemands();
-      renderHome();
+      save(); renderDemands(); renderHome();
     }
   );
 }
 
 function askDeleteRoom(id) {
-  const room = state.rooms.find(r => r.id === id);
+  const room  = state.rooms.find(r => r.id === id);
   const count = (state.data[id] || []).length;
-  const msg = count > 0
+  const msg   = count > 0
     ? `Excluir "${room.name}" e ${count} demanda${count !== 1 ? 's' : ''} dentro dele? Essa ação não pode ser desfeita.`
     : `Excluir "${room.name}"? Essa ação não pode ser desfeita.`;
   openConfirm('Excluir lugar', msg, () => {
     state.rooms = state.rooms.filter(r => r.id !== id);
     delete state.data[id];
-    save();
-    renderHome();
+    save(); renderHome();
   });
 }
 
@@ -330,28 +534,20 @@ function saveRoom() {
 }
 
 // ─── MODAL ────────────────────────────────────────────────────
-function openModal(id) {
-  document.getElementById(id).style.display = 'flex';
-}
-
-function closeModal(id) {
-  document.getElementById(id).style.display = 'none';
-}
-
-function overlayClick(e, id) {
-  if (e.target === document.getElementById(id)) closeModal(id);
-}
+function openModal(id)  { document.getElementById(id).style.display = 'flex'; }
+function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+function overlayClick(e, id) { if (e.target === document.getElementById(id)) closeModal(id); }
 
 function openConfirm(title, msg, cb) {
   document.getElementById('confirm-title').textContent = title;
-  document.getElementById('confirm-msg').textContent = msg;
+  document.getElementById('confirm-msg').textContent   = msg;
   document.getElementById('confirm-btn').onclick = () => { closeModal('modal-confirm'); cb(); };
   openModal('modal-confirm');
 }
 
 // ─── RELATÓRIO ────────────────────────────────────────────────
 function renderReport() {
-  const total = state.rooms.reduce((s, r) => s + (state.data[r.id] || []).length, 0);
+  const total     = state.rooms.reduce((s, r) => s + (state.data[r.id] || []).length, 0);
   const container = document.getElementById('report-content');
 
   let html = `<div class="report-header">
@@ -366,74 +562,35 @@ function renderReport() {
 
   state.rooms.forEach(r => {
     const demands = state.data[r.id] || [];
-    if (demands.length === 0) return;
-    html += `<div class="report-room">
-      <div class="report-room-title">${r.icon}  ${escHtml(r.name)}</div>`;
+    if (!demands.length) return;
+    html += `<div class="report-room"><div class="report-room-title">${r.icon}  ${escHtml(r.name)}</div>`;
     demands.forEach(d => {
-      html += `<div class="report-row">
-        <span>${escHtml(d.title)}</span>
-        <span>${d.date}</span>
-      </div>`;
+      html += `<div class="report-row"><span>${escHtml(d.title)}</span><span>${d.date}</span></div>`;
     });
     html += `</div>`;
   });
 
   html += `<div class="export-area">
     <strong>Como compartilhar com a arquiteta</strong>
-    Use o botão de compartilhar do seu navegador (Safari ou Chrome) → "Imprimir" → salvar como PDF.
-    Ou tire um print da tela e envie por WhatsApp.
+    Use o botão de compartilhar do seu navegador → "Imprimir" → salvar como PDF.
   </div>`;
 
   container.innerHTML = html;
 }
 
-function exportReport() {
-  window.print();
-}
+function exportReport() { window.print(); }
 
 // ─── UTILITÁRIOS ──────────────────────────────────────────────
 function escHtml(str) {
   return String(str)
-    .replace(/&/g,'&amp;')
-    .replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;');
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 // ─── INIT ─────────────────────────────────────────────────────
-function refreshUI() {
-  renderHome();
-  const activeId = document.querySelector('.screen.active')?.id;
-  if (activeId === 'screen-room' && currentRoom) renderDemands();
-  if (activeId === 'screen-report') renderReport();
-}
-
-if (db) {
-  db.collection('reforma').doc('main').onSnapshot(
-    doc => {
-      if (doc.exists) {
-        const d = doc.data();
-        state = d.state || { rooms: [], data: {} };
-        nextId = d.nextId || 1;
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({ state, nextId }));
-      } else {
-        // Primeira vez com Firebase: migra dados do localStorage
-        loadLocal();
-        if (state.rooms.length > 0) {
-          db.collection('reforma').doc('main').set({ state, nextId });
-        }
-      }
-      refreshUI();
-    },
-    err => {
-      console.warn('Firebase error:', err);
-      loadLocal();
-      refreshUI();
-    }
-  );
-} else {
-  loadLocal();
-  refreshUI();
-}
-
+loadLocal();
+refreshUI();
 renderMediaArea();
+
+// Tenta conectar silenciosamente se já conectou antes
+window.addEventListener('load', () => trySilentConnect().then(refreshUI).catch(() => {}));
