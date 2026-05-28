@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(gh --version)",
+      "PowerShell(winget --version)",
+      "PowerShell(winget install --id Git.Git -e --source winget --accept-package-agreements --accept-source-agreements)",
+      "PowerShell($env:PATH = \"$env:PATH;C:\\\\Program Files\\\\Git\\\\cmd\"; cd \"c:\\\\Users\\\\vinicius\\\\Desktop\\\\reforma-casa-nova\"; git --version)",
+      "PowerShell($env:PATH = \"$env:PATH;C:\\\\Program Files\\\\Git\\\\cmd\"; cd \"c:\\\\Users\\\\vinicius\\\\Desktop\\\\reforma-casa-nova\"; git config --global user.name \"VMA95\"; git config --global user.email \"krebsprok@gmail.com\"; git init; git remote add origin https://github.com/VMA95/reforma-casa-nova.git)",
+      "PowerShell($env:PATH = \"$env:PATH;C:\\\\Program Files\\\\Git\\\\cmd\"; cd \"c:\\\\Users\\\\vinicius\\\\Desktop\\\\reforma-casa-nova\"; git add .; git commit -m \"Adiciona suporte a upload de video\")"
+    ]
+  }
+}

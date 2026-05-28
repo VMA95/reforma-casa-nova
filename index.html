@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reforma Casa Nova</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Serif+Display&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div id="app">
+
+    <!-- HOME -->
+    <div id="screen-home" class="screen active">
+      <header class="topbar">
+        <div class="topbar-left">
+          <span class="app-icon">🏠</span>
+          <div>
+            <div class="app-title">Reforma Casa Nova</div>
+            <div class="app-sub" id="home-sub">carregando…</div>
+          </div>
+        </div>
+      </header>
+
+      <div class="content" id="room-list"></div>
+    </div>
+
+    <!-- CÔMODO -->
+    <div id="screen-room" class="screen">
+      <header class="topbar">
+        <button class="btn-back" onclick="showScreen('home')" aria-label="voltar">←</button>
+        <div class="topbar-center" id="room-title">Cômodo</div>
+        <button class="btn-icon-top" onclick="openAddDemand()" aria-label="nova demanda">+</button>
+      </header>
+      <div class="content" id="demand-list"></div>
+    </div>
+
+    <!-- ADICIONAR DEMANDA -->
+    <div id="screen-add-demand" class="screen">
+      <header class="topbar">
+        <button class="btn-back" onclick="showScreen('room')" aria-label="voltar">←</button>
+        <div class="topbar-center">Nova demanda</div>
+        <div style="width:36px;"></div>
+      </header>
+      <div class="content form-content">
+        <div class="field">
+          <label>Título</label>
+          <input type="text" id="inp-title" placeholder="Ex: Trocar revestimento da parede">
+        </div>
+        <div class="field">
+          <label>Descrição <span class="optional">(opcional)</span></label>
+          <textarea id="inp-desc" placeholder="Descreva o que você quer fazer…"></textarea>
+        </div>
+        <div class="field">
+          <label>Foto ou Vídeo <span class="optional">(opcional)</span></label>
+          <div id="photo-upload-area"></div>
+        </div>
+        <button class="btn-primary" onclick="saveDemand()">Salvar demanda</button>
+        <button class="btn-secondary" onclick="showScreen('room')">Cancelar</button>
+      </div>
+    </div>
+
+    <!-- RELATÓRIO -->
+    <div id="screen-report" class="screen">
+      <header class="topbar">
+        <div class="topbar-center">Relatório</div>
+        <button class="btn-icon-top" onclick="exportReport()" aria-label="exportar">↓</button>
+      </header>
+      <div class="content" id="report-content"></div>
+    </div>
+
+    <!-- NAV -->
+    <nav class="nav-bottom">
+      <button class="nav-item active" id="nav-home" onclick="goTab('home')">
+        <span class="nav-icon">🏠</span>
+        <span>Início</span>
+      </button>
+      <button class="nav-item" id="nav-report" onclick="goTab('report')">
+        <span class="nav-icon">📋</span>
+        <span>Relatório</span>
+      </button>
+    </nav>
+
+    <!-- MODAL NOVO CÔMODO -->
+    <div id="modal-room" class="overlay" style="display:none;" onclick="overlayClick(event,'modal-room')">
+      <div class="modal-box">
+        <h2 class="modal-title">Novo lugar</h2>
+        <div class="field">
+          <label>Nome</label>
+          <input type="text" id="room-name-inp" placeholder="Ex: Varanda, Escritório, Garagem…">
+        </div>
+        <div class="field">
+          <label>Ícone</label>
+          <div class="emoji-grid" id="emoji-grid"></div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-secondary" onclick="closeModal('modal-room')">Cancelar</button>
+          <button class="btn-primary" onclick="saveRoom()">Criar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL CONFIRMAR EXCLUSÃO -->
+    <div id="modal-confirm" class="overlay" style="display:none;" onclick="overlayClick(event,'modal-confirm')">
+      <div class="modal-box">
+        <h2 class="modal-title" id="confirm-title">Confirmar</h2>
+        <p id="confirm-msg" class="confirm-msg"></p>
+        <div class="modal-actions">
+          <button class="btn-secondary" onclick="closeModal('modal-confirm')">Cancelar</button>
+          <button class="btn-danger" id="confirm-btn">Excluir</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
