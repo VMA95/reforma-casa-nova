@@ -69,8 +69,11 @@
     <!-- RELATÓRIO -->
     <div id="screen-report" class="screen">
       <header class="topbar">
+        <button class="btn-share" onclick="shareReport()" aria-label="compartilhar">
+          <span>↑</span><span class="btn-share-label">Compartilhar</span>
+        </button>
         <div class="topbar-center">Relatório</div>
-        <button class="btn-icon-top" onclick="exportReport()" aria-label="exportar">↓</button>
+        <button class="btn-icon-top" onclick="exportReport()" aria-label="imprimir" title="Salvar PDF">↓</button>
       </header>
       <div class="content" id="report-content"></div>
     </div>

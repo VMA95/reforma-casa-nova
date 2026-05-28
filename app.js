@@ -446,6 +446,8 @@ function renderReport() {
       if (d.photo && !items.find(m => m.url === d.photo)) items.unshift({ url: d.photo, type: 'image' });
       const images = items.filter(m => m.type === 'image');
 
+      const videos = items.filter(m => m.type === 'video');
+
       let photosHtml = '';
       if (images.length === 1) {
         photosHtml = `<div class="report-photos-full">
@@ -457,6 +459,17 @@ function renderReport() {
           `</div>`;
       }
 
+      let videosHtml = '';
+      if (videos.length) {
+        videosHtml = `<div class="report-videos">` +
+          videos.map((m, vi) =>
+            `<a href="${escHtml(m.url)}" target="_blank" class="report-video-link">
+              ▶ Ver vídeo${videos.length > 1 ? ' ' + (vi + 1) : ''}
+            </a>`
+          ).join('') +
+          `</div>`;
+      }
+
       html += `<div class="report-demand-block${i > 0 ? ' has-border' : ''}">
         <div class="report-demand-row">
           <span class="report-demand-num">${i + 1}</span>
@@ -464,6 +477,7 @@ function renderReport() {
             <div class="report-demand-name">${escHtml(d.title)}</div>
             ${d.desc ? `<div class="report-demand-obs">${escHtml(d.desc)}</div>` : ''}
             ${photosHtml}
+            ${videosHtml}
           </div>
           <span class="report-demand-date">${d.date}</span>
         </div>
@@ -486,6 +500,21 @@ function renderReport() {
 }
 
 function exportReport() { window.print(); }
+
+async function shareReport() {
+  const base = window.location.origin + window.location.pathname;
+  const url  = base + '?view';
+  const text = 'Demandas da nossa reforma 🏠';
+
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: 'Reforma Casa Nova', text, url });
+    } catch(e) { /* cancelado pelo usuário */ }
+  } else {
+    // Fallback: abre WhatsApp Web
+    window.open('https://wa.me/?text=' + encodeURIComponent(text + '\n' + url), '_blank');
+  }
+}
 
 // ─── LIGHTBOX ─────────────────────────────────────────────────
 function openLightbox(url, type) {

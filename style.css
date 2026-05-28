@@ -606,6 +606,49 @@ textarea { height: 96px; resize: none; line-height: 1.55; }
   display: block;
 }
 
+/* BOTÃO COMPARTILHAR */
+.btn-share {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--accent-light);
+  color: var(--accent);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+.btn-share:hover { background: #D6EEE2; }
+.btn-share-label { font-size: 12px; }
+
+/* LINKS DE VÍDEO NO RELATÓRIO */
+.report-videos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.report-video-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  background: var(--accent-light);
+  color: var(--accent);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  border: 1px solid rgba(27,67,50,0.15);
+  transition: background 0.15s;
+}
+.report-video-link:hover { background: #D6EEE2; }
+
 /* Dica de exportar */
 .export-hint {
   background: var(--bg-secondary);
@@ -630,7 +673,7 @@ textarea { height: 96px; resize: none; line-height: 1.55; }
   #app               { max-width: 100% !important; box-shadow: none !important; height: auto !important; overflow: visible !important; }
   .screen            { display: none !important; }
   #screen-report     { display: block !important; height: auto !important; overflow: visible !important; }
-  .topbar, .nav-bottom, .view-banner, .export-hint { display: none !important; }
+  .topbar, .nav-bottom, .view-banner, .export-hint, .btn-share { display: none !important; }
   .content           { padding: 0 !important; overflow: visible !important; height: auto !important; padding-bottom: 0 !important; }
 
   .report-doc        { border: none !important; box-shadow: none !important; padding: 0 !important; border-radius: 0 !important; }
