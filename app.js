@@ -4,11 +4,14 @@ const CLOUDINARY_PRESET = 'reforma_uploads';
 
 // ─── FIREBASE (sync em tempo real) ────────────────────────────
 // Cole aqui o firebaseConfig após criar o projeto no Firebase:
-const FIREBASE_CONFIG = null;
-// const FIREBASE_CONFIG = {
-//   apiKey: "...", authDomain: "...", projectId: "...",
-//   storageBucket: "...", messagingSenderId: "...", appId: "..."
-// };
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyCfdXfGapGJMq0839etYCyifbEJJ3C0uvM",
+  authDomain: "reforma-casa-nova-131e4.firebaseapp.com",
+  projectId: "reforma-casa-nova-131e4",
+  storageBucket: "reforma-casa-nova-131e4.firebasestorage.app",
+  messagingSenderId: "342926095105",
+  appId: "1:342926095105:web:b482f455c7c42b6db2a100"
+};
 
 let db = null;
 if (FIREBASE_CONFIG && typeof firebase !== 'undefined') {
