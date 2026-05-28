@@ -184,6 +184,44 @@ html, body {
   color: var(--text-hint);
   margin-top: 2px;
 }
+/* CHECK DE DEMANDA CONCLUÍDA */
+.btn-check {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid var(--border-strong);
+  background: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  transition: background 0.2s, border-color 0.2s, transform 0.1s;
+  margin-right: 2px;
+}
+.btn-check:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent-light);
+}
+.btn-check:active { transform: scale(0.9); }
+.btn-check.checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.btn-check:disabled { cursor: default; }
+
+.demand-done {
+  background: #F9FFF9;
+  border-color: #D6EEE2;
+}
+.title-done {
+  text-decoration: line-through;
+  color: var(--text-hint);
+}
+
 /* CARD ACTION BUTTONS (editar / excluir) */
 .card-actions {
   display: flex;

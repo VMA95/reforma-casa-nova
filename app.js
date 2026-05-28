@@ -87,10 +87,12 @@ function refreshUI() {
 // ─── HOME ─────────────────────────────────────────────────────
 function renderHome() {
   const total = state.rooms.reduce((s, r) => s + (state.data[r.id] || []).length, 0);
+  const done  = state.rooms.reduce((s, r) => s + (state.data[r.id] || []).filter(d => d.done).length, 0);
   document.getElementById('home-sub').textContent =
     total === 0 ? 'nenhuma demanda ainda' :
-    total === 1 ? '1 demanda cadastrada' :
-    `${total} demandas cadastradas`;
+    done  === 0 ? `${total} demanda${total !== 1 ? 's' : ''} cadastrada${total !== 1 ? 's' : ''}` :
+    done === total ? `${total} de ${total} concluídas ✓` :
+    `${done} de ${total} concluídas`;
 
   const list = document.getElementById('room-list');
 
@@ -107,13 +109,19 @@ function renderHome() {
   }
 
   let html = state.rooms.map(r => {
-    const count = (state.data[r.id] || []).length;
+    const demands  = state.data[r.id] || [];
+    const count    = demands.length;
+    const doneCount= demands.filter(d => d.done).length;
+    const countLabel = count === 0 ? 'Nenhuma demanda' :
+      doneCount === count ? `${count} de ${count} concluídas ✓` :
+      doneCount > 0 ? `${doneCount} de ${count} concluídas` :
+      count + ' demanda' + (count !== 1 ? 's' : '');
     return `
       <div class="room-card">
         <div class="room-icon-wrap" style="background:${r.bg};" onclick="openRoom('${r.id}')">${r.icon}</div>
         <div class="room-info" onclick="openRoom('${r.id}')">
           <div class="room-name">${escHtml(r.name)}</div>
-          <div class="room-count">${count === 0 ? 'Nenhuma demanda' : count + ' demanda' + (count !== 1 ? 's' : '')}</div>
+          <div class="room-count">${countLabel}</div>
         </div>
         ${VIEW_MODE ? '' : `<button class="btn-card-action btn-card-danger" onclick="askDeleteRoom('${r.id}')" aria-label="excluir ${escHtml(r.name)}">✕</button>`}
       </div>`;
@@ -172,9 +180,15 @@ function renderDemands() {
     }
 
     return `
-      <div class="demand-card">
+      <div class="demand-card${d.done ? ' demand-done' : ''}">
         <div class="demand-header">
-          <div class="demand-title">${escHtml(d.title)}</div>
+          <button class="btn-check${d.done ? ' checked' : ''}"
+            onclick="${VIEW_MODE ? '' : `toggleDemandDone(${d.id})`}"
+            ${VIEW_MODE ? 'disabled' : ''}
+            aria-label="${d.done ? 'marcar como pendente' : 'marcar como concluída'}">
+            ${d.done ? '✓' : ''}
+          </button>
+          <div class="demand-title${d.done ? ' title-done' : ''}">${escHtml(d.title)}</div>
           ${VIEW_MODE ? '' : `
             <div class="card-actions">
               <button class="btn-card-action" onclick="openEditDemand(${d.id})" aria-label="editar">✎</button>
@@ -335,6 +349,17 @@ function saveDemand() {
   renderDemands();
   renderHome();
   showScreen('room');
+}
+
+// ─── CHECK (concluída) ────────────────────────────────────────
+function toggleDemandDone(id) {
+  if (VIEW_MODE) return;
+  const demand = (state.data[currentRoom] || []).find(d => d.id === id);
+  if (!demand) return;
+  demand.done = !demand.done;
+  save();
+  renderDemands();
+  renderHome();
 }
 
 // ─── EXCLUSÃO ─────────────────────────────────────────────────
