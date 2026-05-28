@@ -41,11 +41,11 @@
       <div class="content" id="demand-list"></div>
     </div>
 
-    <!-- ADICIONAR DEMANDA -->
+    <!-- ADICIONAR / EDITAR DEMANDA -->
     <div id="screen-add-demand" class="screen">
       <header class="topbar">
-        <button class="btn-back" onclick="showScreen('room')" aria-label="voltar">←</button>
-        <div class="topbar-center">Nova demanda</div>
+        <button class="btn-back" onclick="cancelDemandForm()" aria-label="voltar">←</button>
+        <div class="topbar-center" id="demand-form-title">Nova demanda</div>
         <div style="width:36px;"></div>
       </header>
       <div class="content form-content">
@@ -61,8 +61,8 @@
           <label>Fotos / Vídeos <span class="optional">(opcional)</span></label>
           <div id="photo-upload-area"></div>
         </div>
-        <button class="btn-primary" onclick="saveDemand()">Salvar demanda</button>
-        <button class="btn-secondary" onclick="showScreen('room')">Cancelar</button>
+        <button class="btn-primary" onclick="saveDemand()" id="demand-save-btn">Salvar demanda</button>
+        <button class="btn-secondary" onclick="cancelDemandForm()">Cancelar</button>
       </div>
     </div>
 

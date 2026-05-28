@@ -184,18 +184,30 @@ html, body {
   color: var(--text-hint);
   margin-top: 2px;
 }
-.btn-room-delete {
+/* CARD ACTION BUTTONS (editar / excluir) */
+.card-actions {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.btn-card-action {
   background: none;
   border: none;
   cursor: pointer;
-  color: var(--text-hint);
-  font-size: 16px;
-  padding: 6px;
+  color: #D0D0D0;
+  font-size: 15px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: var(--radius-sm);
   transition: background 0.15s, color 0.15s;
   flex-shrink: 0;
+  line-height: 1;
 }
-.btn-room-delete:hover { color: var(--danger); background: var(--danger-light); }
+.btn-card-action:hover     { background: var(--bg-secondary); color: var(--text-muted); }
+.btn-card-danger:hover     { background: var(--danger-light); color: var(--danger); }
 
 /* ADD ROOM BUTTON */
 .btn-add-room {
@@ -260,18 +272,6 @@ html, body {
   font-weight: 500;
   letter-spacing: 0.01em;
 }
-.btn-demand-delete {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--text-hint);
-  font-size: 15px;
-  padding: 4px 6px;
-  border-radius: var(--radius-sm);
-  transition: background 0.15s, color 0.15s;
-  flex-shrink: 0;
-}
-.btn-demand-delete:hover { color: var(--danger); background: var(--danger-light); }
 
 /* MEDIA GRID */
 .demand-media-grid {

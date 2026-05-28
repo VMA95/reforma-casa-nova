@@ -117,7 +117,7 @@ function renderHome() {
           <div class="room-name">${escHtml(r.name)}</div>
           <div class="room-count">${count === 0 ? 'Nenhuma demanda' : count + ' demanda' + (count !== 1 ? 's' : '')}</div>
         </div>
-        ${VIEW_MODE ? '' : `<button class="btn-room-delete" onclick="askDeleteRoom('${r.id}')" aria-label="excluir ${escHtml(r.name)}">🗑</button>`}
+        ${VIEW_MODE ? '' : `<button class="btn-card-action btn-card-danger" onclick="askDeleteRoom('${r.id}')" aria-label="excluir ${escHtml(r.name)}">✕</button>`}
       </div>`;
   }).join('');
 
@@ -177,7 +177,11 @@ function renderDemands() {
       <div class="demand-card">
         <div class="demand-header">
           <div class="demand-title">${escHtml(d.title)}</div>
-          ${VIEW_MODE ? '' : `<button class="btn-demand-delete" onclick="askDeleteDemand(${d.id})" aria-label="excluir">🗑</button>`}
+          ${VIEW_MODE ? '' : `
+            <div class="card-actions">
+              <button class="btn-card-action" onclick="openEditDemand(${d.id})" aria-label="editar">✎</button>
+              <button class="btn-card-action btn-card-danger" onclick="askDeleteDemand(${d.id})" aria-label="excluir">✕</button>
+            </div>`}
         </div>
         ${d.desc ? `<div class="demand-desc">${escHtml(d.desc)}</div>` : ''}
         ${mediaHtml}
@@ -186,18 +190,49 @@ function renderDemands() {
   }).join('');
 }
 
-// ─── ADICIONAR DEMANDA ────────────────────────────────────────
-let uploadedMedia = [];
-let isUploading   = false;
+// ─── ADICIONAR / EDITAR DEMANDA ───────────────────────────────
+let uploadedMedia    = [];
+let isUploading      = false;
+let editingDemandId  = null;
 
 function openAddDemand() {
   if (VIEW_MODE) return;
+  editingDemandId = null;
+  document.getElementById('demand-form-title').textContent = 'Nova demanda';
+  document.getElementById('demand-save-btn').textContent   = 'Salvar demanda';
   document.getElementById('inp-title').value = '';
   document.getElementById('inp-desc').value  = '';
   uploadedMedia = [];
   isUploading   = false;
   renderMediaArea();
   showScreen('add-demand');
+}
+
+function openEditDemand(id) {
+  if (VIEW_MODE) return;
+  const demand = (state.data[currentRoom] || []).find(d => d.id === id);
+  if (!demand) return;
+
+  editingDemandId = id;
+  document.getElementById('demand-form-title').textContent = 'Editar demanda';
+  document.getElementById('demand-save-btn').textContent   = 'Salvar alterações';
+  document.getElementById('inp-title').value = demand.title;
+  document.getElementById('inp-desc').value  = demand.desc || '';
+
+  // Pré-popula com mídia existente (compatível com formato antigo)
+  const items = [...(demand.media || [])];
+  if (demand.photo && !items.find(m => m.url === demand.photo)) items.unshift({ url: demand.photo, type: 'image' });
+  if (demand.video && !items.find(m => m.url === demand.video)) items.push({ url: demand.video, type: 'video' });
+  uploadedMedia = items;
+
+  isUploading = false;
+  renderMediaArea();
+  showScreen('add-demand');
+}
+
+function cancelDemandForm() {
+  editingDemandId = null;
+  showScreen('room');
 }
 
 function renderMediaArea() {
@@ -276,13 +311,28 @@ function saveDemand() {
   if (!title)      { document.getElementById('inp-title').focus(); return; }
   if (isUploading) return;
 
-  const today = new Date();
-  const date  = String(today.getDate()).padStart(2,'0') + '/' +
-                String(today.getMonth()+1).padStart(2,'0') + '/' +
-                today.getFullYear();
-
   if (!state.data[currentRoom]) state.data[currentRoom] = [];
-  state.data[currentRoom].push({ id: nextId++, title, desc, media: [...uploadedMedia], date });
+
+  if (editingDemandId !== null) {
+    const idx = state.data[currentRoom].findIndex(d => d.id === editingDemandId);
+    if (idx !== -1) {
+      state.data[currentRoom][idx] = {
+        ...state.data[currentRoom][idx],
+        title, desc,
+        media: [...uploadedMedia],
+        photo: null,
+        video: null
+      };
+    }
+    editingDemandId = null;
+  } else {
+    const today = new Date();
+    const date  = String(today.getDate()).padStart(2,'0') + '/' +
+                  String(today.getMonth()+1).padStart(2,'0') + '/' +
+                  today.getFullYear();
+    state.data[currentRoom].push({ id: nextId++, title, desc, media: [...uploadedMedia], date });
+  }
+
   save();
   renderDemands();
   renderHome();
