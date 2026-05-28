@@ -74,16 +74,14 @@ function showScreen(name) {
 }
 
 function goTab(name) {
-  if (name === 'report') renderReport();
-  if (name === 'home')   renderHome();
+  if (name === 'home') renderHome();
   showScreen(name);
 }
 
 function refreshUI() {
   renderHome();
   const id = document.querySelector('.screen.active')?.id;
-  if (id === 'screen-room'   && currentRoom) renderDemands();
-  if (id === 'screen-report')               renderReport();
+  if (id === 'screen-room' && currentRoom) renderDemands();
 }
 
 // ─── HOME ─────────────────────────────────────────────────────
@@ -410,111 +408,6 @@ function openConfirm(title, msg, cb) {
   openModal('modal-confirm');
 }
 
-// ─── RELATÓRIO ────────────────────────────────────────────────
-function renderReport() {
-  const total     = state.rooms.reduce((s, r) => s + (state.data[r.id] || []).length, 0);
-  const container = document.getElementById('report-content');
-  const now       = new Date();
-  const dateStr   = String(now.getDate()).padStart(2,'0') + '/' +
-                    String(now.getMonth()+1).padStart(2,'0') + '/' +
-                    now.getFullYear();
-
-  let html = `
-    <div class="report-doc">
-      <div class="report-doc-header">
-        <div class="report-doc-title">Reforma Casa Nova</div>
-        <div class="report-doc-meta">Relatório de demandas · ${dateStr}</div>
-        <div class="report-doc-divider"></div>
-      </div>`;
-
-  if (total === 0) {
-    html += `<div class="empty-state"><span class="empty-icon">📋</span>Adicione demandas para gerar o relatório.</div>`;
-    html += `</div>`;
-    container.innerHTML = html;
-    return;
-  }
-
-  state.rooms.forEach(r => {
-    const demands = state.data[r.id] || [];
-    if (!demands.length) return;
-
-    html += `<div class="report-section">
-      <div class="report-section-title">${r.icon} ${escHtml(r.name)}</div>`;
-
-    demands.forEach((d, i) => {
-      const items  = [...(d.media || [])];
-      if (d.photo && !items.find(m => m.url === d.photo)) items.unshift({ url: d.photo, type: 'image' });
-      const images = items.filter(m => m.type === 'image');
-
-      const videos = items.filter(m => m.type === 'video');
-
-      let photosHtml = '';
-      if (images.length === 1) {
-        photosHtml = `<div class="report-photos-full">
-          <img src="${escHtml(images[0].url)}" class="report-photo-full" alt="" loading="lazy">
-        </div>`;
-      } else if (images.length > 1) {
-        photosHtml = `<div class="report-photos-grid">` +
-          images.map(m => `<img src="${escHtml(m.url)}" class="report-photo-grid" alt="" loading="lazy">`).join('') +
-          `</div>`;
-      }
-
-      let videosHtml = '';
-      if (videos.length) {
-        videosHtml = `<div class="report-videos">` +
-          videos.map((m, vi) =>
-            `<a href="${escHtml(m.url)}" target="_blank" class="report-video-link">
-              ▶ Ver vídeo${videos.length > 1 ? ' ' + (vi + 1) : ''}
-            </a>`
-          ).join('') +
-          `</div>`;
-      }
-
-      html += `<div class="report-demand-block${i > 0 ? ' has-border' : ''}">
-        <div class="report-demand-row">
-          <span class="report-demand-num">${i + 1}</span>
-          <div class="report-demand-body">
-            <div class="report-demand-name">${escHtml(d.title)}</div>
-            ${d.desc ? `<div class="report-demand-obs">${linkifyText(d.desc)}</div>` : ''}
-            ${photosHtml}
-            ${videosHtml}
-          </div>
-          <span class="report-demand-date">${d.date}</span>
-        </div>
-      </div>`;
-    });
-
-    html += `</div>`;
-  });
-
-  html += `</div>`;
-
-  if (!VIEW_MODE) {
-    html += `<div class="export-hint">
-      <strong>Exportar como PDF</strong>
-      Toque no botão ↓ acima → "Imprimir" → salvar como PDF → enviar para a arquiteta.
-    </div>`;
-  }
-
-  container.innerHTML = html;
-}
-
-function exportReport() { window.print(); }
-
-async function shareReport() {
-  const base = window.location.origin + window.location.pathname;
-  const url  = base + '?view';
-  const text = 'Demandas da nossa reforma 🏠';
-
-  if (navigator.share) {
-    try {
-      await navigator.share({ title: 'Reforma Casa Nova', text, url });
-    } catch(e) { /* cancelado pelo usuário */ }
-  } else {
-    // Fallback: abre WhatsApp Web
-    window.open('https://wa.me/?text=' + encodeURIComponent(text + '\n' + url), '_blank');
-  }
-}
 
 // ─── LIGHTBOX ─────────────────────────────────────────────────
 function openLightbox(url, type) {
