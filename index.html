@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Reforma Casa Nova</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Serif+Display&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -17,16 +17,42 @@
       👁 Modo visualização — somente leitura
     </div>
 
-    <!-- HOME -->
-    <div id="screen-home" class="screen active">
-      <header class="topbar">
-        <div class="topbar-left">
-          <span class="app-icon">🏠</span>
-          <div>
-            <div class="app-title">Reforma Casa Nova</div>
-            <div class="app-sub" id="home-sub">carregando…</div>
+    <!-- LANDING -->
+    <div id="screen-landing" class="screen active">
+      <div class="landing-bg"></div>
+      <div class="landing-content">
+        <div class="landing-header">
+          <span class="landing-icon">🏠</span>
+          <div class="landing-title">Reforma Casa Nova</div>
+          <div class="landing-sub" id="landing-sub">carregando…</div>
+        </div>
+        <div class="landing-cards">
+          <div class="landing-card" onclick="goSection('home')">
+            <span class="landing-card-icon">🏗️</span>
+            <div class="landing-card-body">
+              <div class="landing-card-title">Reforma / Construção</div>
+              <div class="landing-card-sub" id="landing-rooms-sub">Cômodos, demandas e acompanhamento</div>
+            </div>
+            <span class="landing-arrow">→</span>
+          </div>
+          <div class="landing-card" onclick="goSection('items')">
+            <span class="landing-card-icon">📦</span>
+            <div class="landing-card-body">
+              <div class="landing-card-title">Itens que temos ou queremos</div>
+              <div class="landing-card-sub" id="landing-items-sub">Eletrodomésticos, móveis e medidas</div>
+            </div>
+            <span class="landing-arrow">→</span>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- HOME (cômodos) -->
+    <div id="screen-home" class="screen">
+      <header class="topbar">
+        <button class="btn-back" onclick="showScreen('landing')" aria-label="voltar">←</button>
+        <div class="topbar-center">Reforma / Construção</div>
+        <div style="width:36px;"></div>
       </header>
       <div class="content" id="room-list"></div>
     </div>
@@ -55,7 +81,7 @@
         </div>
         <div class="field">
           <label>Descrição <span class="optional">(opcional)</span></label>
-          <textarea id="inp-desc" placeholder="Descreva o que você quer fazer… Cole links de referência aqui também (Pinterest, loja, etc.)"></textarea>
+          <textarea id="inp-desc" placeholder="Descreva o que você quer fazer… Cole links de referência aqui também."></textarea>
         </div>
         <div class="field">
           <label>Fotos / Vídeos <span class="optional">(opcional)</span></label>
@@ -66,13 +92,61 @@
       </div>
     </div>
 
-    <!-- NAV -->
-    <nav class="nav-bottom">
-      <button class="nav-item active" id="nav-home" onclick="goTab('home')">
-        <span class="nav-icon">🏠</span>
-        <span>Início</span>
-      </button>
-    </nav>
+    <!-- ITENS -->
+    <div id="screen-items" class="screen">
+      <header class="topbar">
+        <button class="btn-back" onclick="showScreen('landing')" aria-label="voltar">←</button>
+        <div class="topbar-center">Itens que temos ou queremos</div>
+        <button class="btn-icon-top" id="item-add-btn" onclick="openAddItem()" aria-label="novo item">+</button>
+      </header>
+      <div class="content" id="item-list"></div>
+    </div>
+
+    <!-- ADICIONAR / EDITAR ITEM -->
+    <div id="screen-add-item" class="screen">
+      <header class="topbar">
+        <button class="btn-back" onclick="cancelItemForm()" aria-label="voltar">←</button>
+        <div class="topbar-center" id="item-form-title">Novo item</div>
+        <div style="width:36px;"></div>
+      </header>
+      <div class="content form-content">
+        <div class="field">
+          <label>Nome</label>
+          <input type="text" id="inp-item-name" placeholder="Ex: Microondas, Sofá, Geladeira…">
+        </div>
+        <div class="field">
+          <label>Possuo?</label>
+          <div class="owned-toggle">
+            <button class="owned-btn" id="btn-owned-yes" onclick="setOwned(true)">✓ Tenho</button>
+            <button class="owned-btn" id="btn-owned-no" onclick="setOwned(false)">◎ Quero</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Medidas <span class="optional">cm — Altura × Largura × Profundidade</span></label>
+          <div class="dims-row">
+            <input type="number" id="inp-height" placeholder="Altura" min="0">
+            <span class="dim-x">×</span>
+            <input type="number" id="inp-width" placeholder="Largura" min="0">
+            <span class="dim-x">×</span>
+            <input type="number" id="inp-depth" placeholder="Prof." min="0">
+          </div>
+        </div>
+        <div class="field">
+          <label>Peso <span class="optional">kg (opcional)</span></label>
+          <input type="number" id="inp-weight" placeholder="Ex: 12" min="0" step="0.1">
+        </div>
+        <div class="field">
+          <label>Observações <span class="optional">(opcional)</span></label>
+          <textarea id="inp-item-notes" placeholder="Anotações, links de referência…"></textarea>
+        </div>
+        <div class="field">
+          <label>Fotos <span class="optional">(opcional)</span></label>
+          <div id="item-upload-area"></div>
+        </div>
+        <button class="btn-primary" onclick="saveItem()" id="item-save-btn">Salvar item</button>
+        <button class="btn-secondary" onclick="cancelItemForm()">Cancelar</button>
+      </div>
+    </div>
 
     <!-- MODAL NOVO CÔMODO -->
     <div id="modal-room" class="overlay" style="display:none;" onclick="overlayClick(event,'modal-room')">
@@ -119,7 +193,6 @@
   <script src="app.js"></script>
 
   <script>
-    // Mostra banner se for modo visualização
     if (new URLSearchParams(window.location.search).has('view')) {
       document.getElementById('view-banner').style.display = 'flex';
     }
