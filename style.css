@@ -381,19 +381,19 @@ html, body {
 /* FORM */
 .field { display: flex; flex-direction: column; gap: 7px; }
 label {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-muted);
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
 }
 .optional { font-weight: 400; color: var(--text-hint); text-transform: none; letter-spacing: 0; }
-input[type="text"], textarea {
+input[type="text"], input[type="number"], input[type="url"], textarea {
   background: var(--bg-secondary);
   border: 1.5px solid transparent;
   border-radius: var(--radius-md);
-  padding: 12px 14px;
-  font-size: 15px;
+  padding: 14px 16px;
+  font-size: 16px;
   font-family: var(--font-sans);
   color: var(--text);
   width: 100%;
@@ -405,7 +405,7 @@ input:focus, textarea:focus {
   background: var(--bg);
   box-shadow: 0 0 0 3px var(--accent-light);
 }
-textarea { height: 96px; resize: none; line-height: 1.55; }
+textarea { height: 110px; resize: none; line-height: 1.6; }
 
 /* BUTTONS */
 .btn-primary {
@@ -873,9 +873,15 @@ textarea { height: 96px; resize: none; line-height: 1.55; }
   align-items: center;
   gap: 8px;
 }
-.dims-row input { flex: 1; text-align: center; }
+.dims-row input {
+  flex: 1;
+  text-align: center;
+  font-size: 18px !important;
+  padding: 16px 8px !important;
+  font-weight: 600;
+}
 .dim-x {
-  font-size: 16px;
+  font-size: 20px;
   color: var(--text-hint);
   flex-shrink: 0;
   font-weight: 500;
