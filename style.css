@@ -172,8 +172,6 @@ html, body {
   font-size: 24px;
   flex-shrink: 0;
 }
-.room-icon-wrap i[class*="ph-"] { font-size: 24px; color: var(--accent); }
-.emoji-opt i[class*="ph-"]      { font-size: 22px; color: var(--accent); }
 .room-info { flex: 1; cursor: pointer; }
 .room-name {
   font-size: 16px;
@@ -529,6 +527,8 @@ textarea { height: 96px; resize: none; line-height: 1.55; }
   display: grid;
   grid-template-columns: repeat(8, 1fr);
   gap: 4px;
+  max-height: 200px;
+  overflow-y: auto;
 }
 .emoji-opt {
   font-size: 22px;
