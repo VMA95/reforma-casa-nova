@@ -24,20 +24,31 @@ const VIEW_MODE = new URLSearchParams(window.location.search).has('view');
 // ─── ESTADO ───────────────────────────────────────────────────
 const STORAGE_KEY = 'reforma_casa_nova_v1';
 
-const EMOJIS = [
-  '🍳','🚿','🛋️','🛏️','🧺','🪴','🚗','🏊',
-  '📚','🖥️','🪟','🚪','🛁','🔨','💡','🎸',
-  '🌿','🍷','🧘','🏡','🪑','🛠️','🎨','🧱',
-  '🪞','🏋️','🧳','🌳'
+// Phosphor Icons — nomes de ícones para cômodos
+const ICONS = [
+  'cooking-pot', 'bathtub', 'couch', 'bed', 'shower',
+  'car', 'books', 'monitor', 'door', 'wrench',
+  'hammer', 'lightbulb', 'guitar', 'plant', 'wine',
+  'tree', 'chair', 'dumbbell', 'paint-brush', 'lamp',
+  'stairs', 'tv', 'house', 'washing-machine',
+  'baby', 'garage', 'table', 'storage'
 ];
+
+// Renderiza ícone: Phosphor se for nome de ícone, emoji se for legado
+function renderRoomIcon(icon, size = 24) {
+  if (/^[a-z][a-z-]*$/.test(icon)) {
+    return `<i class="ph-fill ph-${icon}" style="font-size:${size}px"></i>`;
+  }
+  return icon; // compatibilidade com cômodos antigos que usam emoji
+}
 const BG_COLORS = [
   '#F0EDE6','#E8EFF0','#EEF0E8','#F0E8EE',
   '#E8EEF0','#F0EAE8','#EBF0E8','#F0EDE8'
 ];
 
-let state       = { rooms: [], data: {}, items: [] };
-let currentRoom = null;
-let selectedEmoji = EMOJIS[0];
+let state        = { rooms: [], data: {}, items: [] };
+let currentRoom  = null;
+let selectedIcon = ICONS[0];
 let nextId      = 1;
 
 // ─── PERSISTÊNCIA ─────────────────────────────────────────────
@@ -131,7 +142,7 @@ function renderHome() {
       count + ' demanda' + (count !== 1 ? 's' : '');
     return `
       <div class="room-card">
-        <div class="room-icon-wrap" style="background:${r.bg};" onclick="openRoom('${r.id}')">${r.icon}</div>
+        <div class="room-icon-wrap" style="background:${r.bg};" onclick="openRoom('${r.id}')">${renderRoomIcon(r.icon)}</div>
         <div class="room-info" onclick="openRoom('${r.id}')">
           <div class="room-name">${escHtml(r.name)}</div>
           <div class="room-count">${countLabel}</div>
@@ -150,7 +161,7 @@ function renderHome() {
 function openRoom(id) {
   currentRoom = id;
   const room  = state.rooms.find(r => r.id === id);
-  document.getElementById('room-title').textContent = room.icon + '  ' + room.name;
+  document.getElementById('room-title').innerHTML = renderRoomIcon(room.icon, 18) + '&nbsp;&nbsp;' + escHtml(room.name);
   const addBtn = document.getElementById('room-add-btn');
   if (addBtn) addBtn.style.display = VIEW_MODE ? 'none' : '';
   renderDemands();
@@ -361,18 +372,20 @@ function askDeleteRoom(id) {
 // ─── NOVO CÔMODO ──────────────────────────────────────────────
 function openAddRoom() {
   if (VIEW_MODE) return;
-  selectedEmoji = EMOJIS[0];
+  selectedIcon = ICONS[0];
   document.getElementById('room-name-inp').value = '';
   const grid = document.getElementById('emoji-grid');
-  grid.innerHTML = EMOJIS.map((e, i) =>
-    `<div class="emoji-opt${i === 0 ? ' selected' : ''}" onclick="selectEmoji('${e}', this)">${e}</div>`
+  grid.innerHTML = ICONS.map((name, i) =>
+    `<div class="emoji-opt${i === 0 ? ' selected' : ''}" onclick="selectIcon('${name}', this)">
+      <i class="ph-fill ph-${name}"></i>
+    </div>`
   ).join('');
   openModal('modal-room');
   setTimeout(() => document.getElementById('room-name-inp').focus(), 50);
 }
 
-function selectEmoji(emoji, el) {
-  selectedEmoji = emoji;
+function selectIcon(name, el) {
+  selectedIcon = name;
   document.querySelectorAll('.emoji-opt').forEach(e => e.classList.remove('selected'));
   el.classList.add('selected');
 }
@@ -383,7 +396,7 @@ function saveRoom() {
   if (!name) { document.getElementById('room-name-inp').focus(); return; }
   const id = 'room_' + Date.now();
   const bg = BG_COLORS[state.rooms.length % BG_COLORS.length];
-  state.rooms.push({ id, name, icon: selectedEmoji, bg });
+  state.rooms.push({ id, name, icon: selectedIcon, bg });
   state.data[id] = [];
   save(); closeModal('modal-room'); renderHome(); renderLanding();
 }

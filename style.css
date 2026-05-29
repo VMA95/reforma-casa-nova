@@ -28,7 +28,7 @@
 
 html, body {
   height: 100%;
-  background: #F2F2F2;
+  background: url('MCO02562.jpg') center/cover no-repeat fixed;
   font-family: var(--font-sans);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
@@ -40,10 +40,10 @@ html, body {
   height: 100dvh;
   display: flex;
   flex-direction: column;
-  background: var(--bg);
+  background: rgba(255,255,255,0.91);
   position: relative;
   overflow: hidden;
-  box-shadow: 0 0 40px rgba(0,0,0,0.10);
+  box-shadow: 0 0 60px rgba(0,0,0,0.18);
 }
 
 /* SCREENS */
@@ -172,6 +172,8 @@ html, body {
   font-size: 24px;
   flex-shrink: 0;
 }
+.room-icon-wrap i[class*="ph-"] { font-size: 24px; color: var(--accent); }
+.emoji-opt i[class*="ph-"]      { font-size: 22px; color: var(--accent); }
 .room-info { flex: 1; cursor: pointer; }
 .room-name {
   font-size: 16px;
@@ -702,14 +704,6 @@ textarea { height: 96px; resize: none; line-height: 1.55; }
 /* ─── LANDING PAGE ───────────────────────────────────────────── */
 #screen-landing { position: relative; overflow: hidden; justify-content: stretch; }
 
-.landing-bg {
-  position: absolute;
-  inset: 0;
-  background: url('MCO02562.jpg') center/cover no-repeat;
-  opacity: 0.18;
-  pointer-events: none;
-  z-index: 0;
-}
 .landing-content {
   position: relative;
   z-index: 1;
