@@ -305,6 +305,8 @@ html, body {
   color: var(--text-muted);
   margin-top: 6px;
   line-height: 1.6;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 .demand-meta {
   display: flex;
@@ -324,6 +326,7 @@ html, body {
   text-decoration: underline;
   text-underline-offset: 2px;
   word-break: break-all;
+  overflow-wrap: anywhere;
 }
 .auto-link:hover { opacity: 0.75; }
 
@@ -833,6 +836,8 @@ textarea { height: 110px; resize: none; line-height: 1.6; }
   padding-top: 10px;
   border-top: 1px solid var(--border);
   line-height: 1.6;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 .item-media-extra {
   display: flex;
