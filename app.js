@@ -155,7 +155,11 @@ function renderHome() {
           <div class="room-name">${escHtml(r.name)}</div>
           <div class="room-count">${countLabel}</div>
         </div>
-        ${VIEW_MODE ? '' : `<button class="btn-card-action btn-card-danger" onclick="askDeleteRoom('${r.id}')" aria-label="excluir ${escHtml(r.name)}">✕</button>`}
+        ${VIEW_MODE ? '' : `
+          <div class="card-actions">
+            <button class="btn-card-action" onclick="openEditRoom('${r.id}')" aria-label="editar ${escHtml(r.name)}">✎</button>
+            <button class="btn-card-action btn-card-danger" onclick="askDeleteRoom('${r.id}')" aria-label="excluir ${escHtml(r.name)}">✕</button>
+          </div>`}
       </div>`;
   }).join('');
 
@@ -377,14 +381,38 @@ function askDeleteRoom(id) {
   });
 }
 
-// ─── NOVO CÔMODO ──────────────────────────────────────────────
+// ─── NOVO / EDITAR CÔMODO ────────────────────────────────────
+let editingRoomId = null;
+
 function openAddRoom() {
   if (VIEW_MODE) return;
+  editingRoomId = null;
   selectedEmoji = EMOJIS[0];
   document.getElementById('room-name-inp').value = '';
+  document.getElementById('modal-room-title').textContent = 'Novo lugar';
+  document.getElementById('room-save-btn').textContent = 'Criar';
   const grid = document.getElementById('emoji-grid');
   grid.innerHTML = EMOJIS.map((e, i) =>
     `<div class="emoji-opt${i === 0 ? ' selected' : ''}" onclick="selectEmoji('${e}', this)" title="${EMOJI_LABELS[e] || ''}">
+      ${e}<span class="emoji-label">${EMOJI_LABELS[e] || ''}</span>
+    </div>`
+  ).join('');
+  openModal('modal-room');
+  setTimeout(() => document.getElementById('room-name-inp').focus(), 50);
+}
+
+function openEditRoom(id) {
+  if (VIEW_MODE) return;
+  const room = state.rooms.find(r => r.id === id);
+  if (!room) return;
+  editingRoomId = id;
+  selectedEmoji = room.icon;
+  document.getElementById('room-name-inp').value = room.name;
+  document.getElementById('modal-room-title').textContent = 'Editar lugar';
+  document.getElementById('room-save-btn').textContent = 'Salvar alterações';
+  const grid = document.getElementById('emoji-grid');
+  grid.innerHTML = EMOJIS.map(e =>
+    `<div class="emoji-opt${e === room.icon ? ' selected' : ''}" onclick="selectEmoji('${e}', this)" title="${EMOJI_LABELS[e] || ''}">
       ${e}<span class="emoji-label">${EMOJI_LABELS[e] || ''}</span>
     </div>`
   ).join('');
@@ -402,10 +430,23 @@ function saveRoom() {
   if (VIEW_MODE) return;
   const name = document.getElementById('room-name-inp').value.trim();
   if (!name) { document.getElementById('room-name-inp').focus(); return; }
-  const id = 'room_' + Date.now();
-  const bg = BG_COLORS[state.rooms.length % BG_COLORS.length];
-  state.rooms.push({ id, name, icon: selectedEmoji, bg });
-  state.data[id] = [];
+
+  if (editingRoomId !== null) {
+    const room = state.rooms.find(r => r.id === editingRoomId);
+    if (room) {
+      room.name = name;
+      room.icon = selectedEmoji;
+      if (currentRoom === room.id) {
+        document.getElementById('room-title').textContent = selectedEmoji + '  ' + name;
+      }
+    }
+    editingRoomId = null;
+  } else {
+    const id = 'room_' + Date.now();
+    const bg = BG_COLORS[state.rooms.length % BG_COLORS.length];
+    state.rooms.push({ id, name, icon: selectedEmoji, bg });
+    state.data[id] = [];
+  }
   save(); closeModal('modal-room'); renderHome(); renderLanding();
 }
 

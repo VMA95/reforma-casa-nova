@@ -147,10 +147,10 @@
       </div>
     </div>
 
-    <!-- MODAL NOVO CÔMODO -->
+    <!-- MODAL NOVO / EDITAR CÔMODO -->
     <div id="modal-room" class="overlay" style="display:none;" onclick="overlayClick(event,'modal-room')">
       <div class="modal-box">
-        <h2 class="modal-title">Novo lugar</h2>
+        <h2 class="modal-title" id="modal-room-title">Novo lugar</h2>
         <div class="field">
           <label>Nome</label>
           <input type="text" id="room-name-inp" placeholder="Ex: Varanda, Escritório, Garagem…">
@@ -161,7 +161,7 @@
         </div>
         <div class="modal-actions">
           <button class="btn-secondary" onclick="closeModal('modal-room')">Cancelar</button>
-          <button class="btn-primary" onclick="saveRoom()">Criar</button>
+          <button class="btn-primary" id="room-save-btn" onclick="saveRoom()">Criar</button>
         </div>
       </div>
     </div>
