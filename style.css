@@ -788,75 +788,38 @@ textarea { height: 110px; resize: none; line-height: 1.6; }
 
 /* ─── ITENS ──────────────────────────────────────────────────── */
 
-/* ACCORDION */
-.accordion-group {
-  margin-bottom: 10px;
-  border-radius: var(--radius-md);
-  border: 1.5px solid var(--border-strong);
-  background: var(--bg-card);
-  overflow: hidden;
-  box-shadow: var(--shadow-xs);
-}
-.accordion-header {
-  width: 100%;
+/* GROUP CARDS */
+.group-card {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 14px 16px;
-  background: none;
-  border: none;
+  gap: 14px;
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  margin-bottom: 10px;
+  border: 1.5px solid var(--border-strong);
+  box-shadow: var(--shadow-xs);
   cursor: pointer;
-  font-family: var(--font-sans);
-  text-align: left;
+  transition: background 0.15s;
 }
-.accordion-badge {
-  width: 30px;
-  height: 30px;
+.group-card:active { background: var(--bg-secondary); }
+.group-card-badge {
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 18px;
   font-weight: 700;
   flex-shrink: 0;
 }
-.accordion-badge.owned  { background: var(--accent); color: #fff; }
-.accordion-badge.wanted { background: var(--accent-light); color: var(--accent); border: 1.5px solid var(--accent); }
-.accordion-title {
-  flex: 1;
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text);
-}
-.accordion-count {
-  font-size: 12px;
-  color: var(--text-hint);
-  background: var(--bg-secondary);
-  padding: 2px 9px;
-  border-radius: 99px;
-  font-weight: 500;
-}
-.accordion-arrow {
-  font-size: 22px;
-  color: var(--text-hint);
-  display: inline-block;
-  transform: rotate(90deg);
-  transition: transform 0.22s ease;
-  line-height: 1;
-}
-.accordion-arrow.open { transform: rotate(-90deg); }
-.accordion-body {
-  display: grid;
-  grid-template-rows: 0fr;
-  overflow: hidden;
-  transition: grid-template-rows 0.25s ease;
-}
-.accordion-body.open { grid-template-rows: 1fr; }
-.accordion-inner {
-  min-height: 0;
-  overflow: hidden;
-  padding: 0 8px 8px;
-}
+.group-card-badge.owned  { background: var(--accent); color: #fff; }
+.group-card-badge.wanted { background: var(--accent-light); color: var(--accent); border: 1.5px solid var(--accent); }
+.group-card-info { flex: 1; }
+.group-card-title { font-size: 16px; font-weight: 600; color: var(--text); }
+.group-card-sub   { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+.group-card-arrow { font-size: 18px; color: var(--text-hint); flex-shrink: 0; }
 .item-card {
   background: var(--bg-card);
   border-radius: var(--radius-lg);

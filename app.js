@@ -116,9 +116,10 @@ function goSection(name) {
 function refreshUI() {
   renderLanding();
   const id = document.querySelector('.screen.active')?.id;
-  if (id === 'screen-home')  renderHome();
-  if (id === 'screen-room'  && currentRoom) renderDemands();
-  if (id === 'screen-items') renderItems();
+  if (id === 'screen-home')                          renderHome();
+  if (id === 'screen-room'         && currentRoom)   renderDemands();
+  if (id === 'screen-items')                         renderItems();
+  if (id === 'screen-items-group'  && currentItemGroup) renderItemGroup();
 }
 
 // ─── LANDING ──────────────────────────────────────────────────
@@ -475,12 +476,7 @@ let editingItemId       = null;
 let itemUploadedMedia   = [];
 let isItemUploading     = false;
 let currentItemOwned    = true;
-let accordionState      = { owned: false, wanted: false };
-
-function toggleAccordion(group) {
-  accordionState[group] = !accordionState[group];
-  renderItems();
-}
+let currentItemGroup    = null;
 
 function renderItems() {
   const list  = document.getElementById('item-list');
@@ -499,26 +495,44 @@ function renderItems() {
   const owned  = items.filter(i => i.owned);
   const wanted = items.filter(i => !i.owned);
 
-  const makeAccordion = (group, icon, label, cards) => {
-    const open = accordionState[group];
-    return `
-      <div class="accordion-group">
-        <button class="accordion-header" onclick="toggleAccordion('${group}')">
-          <span class="accordion-badge ${group}">${icon}</span>
-          <span class="accordion-title">${label}</span>
-          <span class="accordion-count">${cards.length}</span>
-          <span class="accordion-arrow${open ? ' open' : ''}">›</span>
-        </button>
-        <div class="accordion-body${open ? ' open' : ''}">
-          <div class="accordion-inner">${cards.join('')}</div>
-        </div>
-      </div>`;
-  };
+  const makeGroupCard = (group, icon, label, count) => `
+    <div class="group-card" onclick="openItemGroup('${group}')">
+      <div class="group-card-badge ${group}">${icon}</div>
+      <div class="group-card-info">
+        <div class="group-card-title">${label}</div>
+        <div class="group-card-sub">${count} ${count === 1 ? 'item' : 'itens'}</div>
+      </div>
+      <span class="group-card-arrow">→</span>
+    </div>`;
 
   let html = '';
-  if (owned.length)  html += makeAccordion('owned',  '✓', 'Eu Tenho', owned.map(renderItemCard));
-  if (wanted.length) html += makeAccordion('wanted', '◎', 'Eu Quero', wanted.map(renderItemCard));
+  if (owned.length  || !VIEW_MODE) html += makeGroupCard('owned',  '✓', 'Eu Tenho', owned.length);
+  if (wanted.length || !VIEW_MODE) html += makeGroupCard('wanted', '◎', 'Eu Quero', wanted.length);
   list.innerHTML = html;
+}
+
+function openItemGroup(group) {
+  currentItemGroup = group;
+  const title = group === 'owned' ? '✓  Eu Tenho' : '◎  Eu Quero';
+  document.getElementById('items-group-title').textContent = title;
+  const addBtn = document.getElementById('items-group-add-btn');
+  if (addBtn) addBtn.style.display = VIEW_MODE ? 'none' : '';
+  renderItemGroup();
+  showScreen('items-group');
+}
+
+function renderItemGroup() {
+  const list = document.getElementById('items-group-list');
+  if (!list) return;
+  const items = (state.items || []).filter(i => currentItemGroup === 'owned' ? i.owned : !i.owned);
+  if (items.length === 0) {
+    list.innerHTML = `<div class="empty-state">
+      <span class="empty-icon">📦</span>
+      ${VIEW_MODE ? 'Nenhum item aqui.' : 'Nenhum item ainda.<br>Toque no + para adicionar.'}
+    </div>`;
+    return;
+  }
+  list.innerHTML = items.map(renderItemCard).join('');
 }
 
 function renderItemCard(item) {
