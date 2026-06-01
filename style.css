@@ -528,15 +528,18 @@ textarea { height: 110px; resize: none; line-height: 1.6; }
 /* EMOJI GRID */
 .emoji-grid {
   display: grid;
-  grid-template-columns: repeat(8, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 4px;
-  max-height: 200px;
+  max-height: 260px;
   overflow-y: auto;
 }
 .emoji-opt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   font-size: 22px;
   text-align: center;
-  padding: 7px 2px;
+  padding: 6px 2px;
   border-radius: var(--radius-sm);
   cursor: pointer;
   border: 2px solid transparent;
@@ -545,6 +548,16 @@ textarea { height: 110px; resize: none; line-height: 1.6; }
 }
 .emoji-opt:hover    { background: var(--bg-secondary); }
 .emoji-opt.selected { border-color: var(--accent); background: var(--accent-light); }
+.emoji-label {
+  font-size: 8px;
+  color: #888;
+  margin-top: 3px;
+  line-height: 1.1;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
 
 
 /* UPLOAD */

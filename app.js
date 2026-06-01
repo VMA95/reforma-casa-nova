@@ -36,6 +36,19 @@ const EMOJIS = [
   // Sistemas / ambientes
   '🌡️','🔥','🪟','🚪','🛠️','🪣','🧹','🏠'
 ];
+
+const EMOJI_LABELS = {
+  '🍳':'Cozinha','🛋️':'Sala de estar','🛏️':'Quarto','🚿':'Banheiro',
+  '🛁':'Banheiro','🍽️':'Sala de jantar','📚':'Biblioteca','🖥️':'Escritório',
+  '🏋️':'Academia','🎸':'Sala de música','🍷':'Adega','🪞':'Closet',
+  '🧺':'Lavanderia','🧳':'Depósito','🎨':'Ateliê','🪑':'Sala de jantar',
+  '🌳':'Jardim','🪴':'Varanda','🌿':'Área verde','🚗':'Garagem',
+  '🏊':'Piscina','🏡':'Casa','🏗️':'Obra','🪜':'Área de serviço',
+  '🔨':'Marcenaria','🔧':'Instalações','⚡':'Elétrica','💡':'Iluminação',
+  '💧':'Hidráulica','🧱':'Alvenaria','🪵':'Madeira','🔑':'Entrada',
+  '🌡️':'Climatização','🔥':'Aquecimento','🪟':'Janelas','🚪':'Portas',
+  '🛠️':'Manutenção','🪣':'Limpeza','🧹':'Limpeza','🏠':'Geral'
+};
 const BG_COLORS = [
   '#F0EDE6','#E8EFF0','#EEF0E8','#F0E8EE',
   '#E8EEF0','#F0EAE8','#EBF0E8','#F0EDE8'
@@ -371,7 +384,9 @@ function openAddRoom() {
   document.getElementById('room-name-inp').value = '';
   const grid = document.getElementById('emoji-grid');
   grid.innerHTML = EMOJIS.map((e, i) =>
-    `<div class="emoji-opt${i === 0 ? ' selected' : ''}" onclick="selectEmoji('${e}', this)">${e}</div>`
+    `<div class="emoji-opt${i === 0 ? ' selected' : ''}" onclick="selectEmoji('${e}', this)" title="${EMOJI_LABELS[e] || ''}">
+      ${e}<span class="emoji-label">${EMOJI_LABELS[e] || ''}</span>
+    </div>`
   ).join('');
   openModal('modal-room');
   setTimeout(() => document.getElementById('room-name-inp').focus(), 50);
