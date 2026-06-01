@@ -878,23 +878,37 @@ textarea { height: 110px; resize: none; line-height: 1.6; }
 
 /* FORMULÁRIO DE ITEM */
 .owned-toggle {
-  display: flex;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
 }
 .owned-btn {
-  flex: 1;
-  padding: 11px;
-  border: 1.5px solid var(--border-strong);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 18px 12px;
+  border: 2px solid var(--border-strong);
   border-radius: var(--radius-md);
-  background: none;
-  font-size: 14px;
+  background: var(--bg-secondary);
   font-family: var(--font-sans);
-  font-weight: 500;
   color: var(--text-muted);
   cursor: pointer;
   transition: all 0.15s;
 }
-.owned-btn.active  { background: var(--accent); border-color: var(--accent); color: #fff; }
+.owned-btn-icon  { font-size: 28px; font-weight: 700; line-height: 1; }
+.owned-btn-label { font-size: 15px; font-weight: 600; }
+.owned-btn-desc  { font-size: 11px; font-weight: 400; opacity: 0.75; }
+.owned-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.owned-btn:not(.active):hover {
+  border-color: var(--accent);
+  background: var(--accent-light);
+  color: var(--accent);
+}
 .dims-row {
   display: flex;
   align-items: center;

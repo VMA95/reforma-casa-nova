@@ -118,8 +118,16 @@
         <div class="field">
           <label>Possuo?</label>
           <div class="owned-toggle">
-            <button class="owned-btn" id="btn-owned-yes" onclick="setOwned(true)">✓ Tenho</button>
-            <button class="owned-btn" id="btn-owned-no" onclick="setOwned(false)">◎ Quero</button>
+            <button class="owned-btn" id="btn-owned-yes" onclick="setOwned(true)">
+              <span class="owned-btn-icon">✓</span>
+              <span class="owned-btn-label">Tenho</span>
+              <span class="owned-btn-desc">já possuo</span>
+            </button>
+            <button class="owned-btn" id="btn-owned-no" onclick="setOwned(false)">
+              <span class="owned-btn-icon">◎</span>
+              <span class="owned-btn-label">Quero</span>
+              <span class="owned-btn-desc">vou adquirir</span>
+            </button>
           </div>
         </div>
         <div class="field">
