@@ -475,6 +475,12 @@ let editingItemId       = null;
 let itemUploadedMedia   = [];
 let isItemUploading     = false;
 let currentItemOwned    = true;
+let accordionState      = { owned: true, wanted: true };
+
+function toggleAccordion(group) {
+  accordionState[group] = !accordionState[group];
+  renderItems();
+}
 
 function renderItems() {
   const list  = document.getElementById('item-list');
@@ -490,19 +496,28 @@ function renderItems() {
     return;
   }
 
-  // Agrupa: tenho primeiro, depois quero
-  const owned   = items.filter(i => i.owned);
-  const wanted  = items.filter(i => !i.owned);
+  const owned  = items.filter(i => i.owned);
+  const wanted = items.filter(i => !i.owned);
+
+  const makeAccordion = (group, icon, label, cards) => {
+    const open = accordionState[group];
+    return `
+      <div class="accordion-group">
+        <button class="accordion-header" onclick="toggleAccordion('${group}')">
+          <span class="accordion-badge ${group}">${icon}</span>
+          <span class="accordion-title">${label}</span>
+          <span class="accordion-count">${cards.length}</span>
+          <span class="accordion-arrow${open ? ' open' : ''}">›</span>
+        </button>
+        <div class="accordion-body${open ? ' open' : ''}">
+          <div class="accordion-inner">${cards.join('')}</div>
+        </div>
+      </div>`;
+  };
 
   let html = '';
-  if (owned.length) {
-    html += `<div class="item-group-label">✓ Tenho (${owned.length})</div>`;
-    html += owned.map(item => renderItemCard(item)).join('');
-  }
-  if (wanted.length) {
-    html += `<div class="item-group-label">◎ Quero (${wanted.length})</div>`;
-    html += wanted.map(item => renderItemCard(item)).join('');
-  }
+  if (owned.length)  html += makeAccordion('owned',  '✓', 'Eu Tenho', owned.map(renderItemCard));
+  if (wanted.length) html += makeAccordion('wanted', '◎', 'Eu Quero', wanted.map(renderItemCard));
   list.innerHTML = html;
 }
 
