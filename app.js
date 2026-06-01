@@ -475,7 +475,7 @@ let editingItemId       = null;
 let itemUploadedMedia   = [];
 let isItemUploading     = false;
 let currentItemOwned    = true;
-let accordionState      = { owned: true, wanted: true };
+let accordionState      = { owned: false, wanted: false };
 
 function toggleAccordion(group) {
   accordionState[group] = !accordionState[group];

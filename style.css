@@ -848,10 +848,12 @@ textarea { height: 110px; resize: none; line-height: 1.6; }
 .accordion-body {
   display: grid;
   grid-template-rows: 0fr;
+  overflow: hidden;
   transition: grid-template-rows 0.25s ease;
 }
 .accordion-body.open { grid-template-rows: 1fr; }
 .accordion-inner {
+  min-height: 0;
   overflow: hidden;
   padding: 0 8px 8px;
 }
