@@ -34,20 +34,40 @@ const EMOJIS = [
   // Construção / reforma
   '🔨','🔧','⚡','💡','💧','🧱','🪵','🔑',
   // Sistemas / ambientes
-  '🌡️','🔥','🪟','🚪','🛠️','🪣','🧹','🏠'
+  '🌡️','🔥','🪟','🚪','🛠️','🪣','🧹','🏠',
+  // Gourmet / alimentação
+  '🍖','🥩','🥂','☕','🫙','🍕',
+  // Entretenimento
+  '📺','🎮','🎯','🎱',
+  // Kids / família
+  '🧸','🧩','🛌','👶',
+  // Bem-estar
+  '🧖','🛀','🧘',
+  // Jardim / externo
+  '🌱','🌻','⛱️','🪨',
+  // Outros ambientes
+  '🐕','💼','🚽','🛖','🎪','🏺'
 ];
 
 const EMOJI_LABELS = {
   '🍳':'Cozinha','🛋️':'Sala de estar','🛏️':'Quarto','🚿':'Banheiro',
   '🛁':'Banheiro','🍽️':'Sala de jantar','📚':'Biblioteca','🖥️':'Escritório',
   '🏋️':'Academia','🎸':'Sala de música','🍷':'Adega','🪞':'Closet',
-  '🧺':'Lavanderia','🧳':'Depósito','🎨':'Ateliê','🪑':'Sala de jantar',
+  '🧺':'Lavanderia','🧳':'Depósito','🎨':'Ateliê','🪑':'Copa / sala',
   '🌳':'Jardim','🪴':'Varanda','🌿':'Área verde','🚗':'Garagem',
   '🏊':'Piscina','🏡':'Casa','🏗️':'Obra','🪜':'Área de serviço',
   '🔨':'Marcenaria','🔧':'Instalações','⚡':'Elétrica','💡':'Iluminação',
   '💧':'Hidráulica','🧱':'Alvenaria','🪵':'Madeira','🔑':'Entrada',
   '🌡️':'Climatização','🔥':'Aquecimento','🪟':'Janelas','🚪':'Portas',
-  '🛠️':'Manutenção','🪣':'Limpeza','🧹':'Limpeza','🏠':'Geral'
+  '🛠️':'Manutenção','🪣':'Limpeza','🧹':'Limpeza','🏠':'Geral',
+  '🍖':'Área gourmet','🥩':'Churrasqueira','🥂':'Bar','☕':'Copa',
+  '🫙':'Despensa','🍕':'Cozinha / gourmet',
+  '📺':'Home theater','🎮':'Sala de jogos','🎯':'Sala de jogos','🎱':'Salão de jogos',
+  '🧸':'Quarto infantil','🧩':'Brinquedoteca','🛌':'Quarto de hóspedes','👶':'Quarto de bebê',
+  '🧖':'Sauna / spa','🛀':'Banheiro / spa','🧘':'Sala de meditação',
+  '🌱':'Horta','🌻':'Jardim','⛱️':'Deck / área externa','🪨':'Jardim zen',
+  '🐕':'Espaço pet','💼':'Escritório','🚽':'Lavabo','🛖':'Edícula',
+  '🎪':'Salão de festas','🏺':'Sala de estar'
 };
 const BG_COLORS = [
   '#F0EDE6','#E8EFF0','#EEF0E8','#F0E8EE',
