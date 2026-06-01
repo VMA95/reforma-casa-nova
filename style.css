@@ -741,6 +741,15 @@ textarea { height: 110px; resize: none; line-height: 1.6; }
   color: var(--text);
   letter-spacing: -0.02em;
 }
+.landing-verse  {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-style: italic;
+  margin-top: 10px;
+  line-height: 1.5;
+  text-align: center;
+}
+.landing-verse-ref { font-style: normal; font-size: 11px; color: var(--text-hint); white-space: nowrap; }
 .landing-sub    { font-size: 12px; color: var(--text-hint); margin-top: 6px; min-height: 16px; }
 
 .landing-cards  {
