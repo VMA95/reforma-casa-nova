@@ -495,19 +495,31 @@ function renderItems() {
   const owned  = items.filter(i => i.owned);
   const wanted = items.filter(i => !i.owned);
 
-  const makeGroupCard = (group, icon, label, count) => `
-    <div class="group-card" onclick="openItemGroup('${group}')">
-      <div class="group-card-badge ${group}">${icon}</div>
-      <div class="group-card-info">
-        <div class="group-card-title">${label}</div>
-        <div class="group-card-sub">${count} ${count === 1 ? 'item' : 'itens'}</div>
-      </div>
-      <span class="group-card-arrow">→</span>
-    </div>`;
+  const makeGroupCard = (group, icon, label, groupItems) => {
+    const count = groupItems.length;
+    let sub = `${count} ${count === 1 ? 'item' : 'itens'}`;
+    if (group === 'wanted' && !VIEW_MODE && count > 0) {
+      const withPrice = groupItems.filter(i => i.priceMin || i.priceMax);
+      if (withPrice.length > 0) {
+        const totalMin = withPrice.reduce((s, i) => s + (Number(i.priceMin) || 0), 0);
+        const totalMax = withPrice.reduce((s, i) => s + (Number(i.priceMax) || 0), 0);
+        sub += `<br><span class="group-card-price">💰 ${fmtBRL(totalMin)} – ${fmtBRL(totalMax)}</span>`;
+      }
+    }
+    return `
+      <div class="group-card" onclick="openItemGroup('${group}')">
+        <div class="group-card-badge ${group}">${icon}</div>
+        <div class="group-card-info">
+          <div class="group-card-title">${label}</div>
+          <div class="group-card-sub">${sub}</div>
+        </div>
+        <span class="group-card-arrow">→</span>
+      </div>`;
+  };
 
   let html = '';
-  if (owned.length  || !VIEW_MODE) html += makeGroupCard('owned',  '✓', 'Eu Tenho', owned.length);
-  if (wanted.length || !VIEW_MODE) html += makeGroupCard('wanted', '◎', 'Eu Quero', wanted.length);
+  if (owned.length  || !VIEW_MODE) html += makeGroupCard('owned',  '✓', 'Eu Tenho', owned);
+  if (wanted.length || !VIEW_MODE) html += makeGroupCard('wanted', '◎', 'Eu Quero', wanted);
   list.innerHTML = html;
 }
 
@@ -555,6 +567,9 @@ function renderItemCard(item) {
           <span class="item-badge ${item.owned ? 'owned' : 'wanted'}">
             ${item.owned ? '✓ Tenho' : '◎ Quero'}
           </span>
+          ${!VIEW_MODE && !item.owned && (item.priceMin || item.priceMax)
+            ? `<span class="item-price-range">💰 ${fmtPriceRange(item.priceMin, item.priceMax)}</span>`
+            : ''}
         </div>
         ${VIEW_MODE ? '' : `
           <div class="card-actions">
@@ -593,6 +608,8 @@ function openAddItem() {
   document.getElementById('inp-width').value      = '';
   document.getElementById('inp-depth').value      = '';
   document.getElementById('inp-weight').value     = '';
+  document.getElementById('inp-price-min').value  = '';
+  document.getElementById('inp-price-max').value  = '';
   document.getElementById('inp-item-notes').value = '';
   itemUploadedMedia = [];
   isItemUploading   = false;
@@ -609,12 +626,14 @@ function openEditItem(id) {
   currentItemOwned = item.owned;
   document.getElementById('item-form-title').textContent = 'Editar item';
   document.getElementById('item-save-btn').textContent   = 'Salvar alterações';
-  document.getElementById('inp-item-name').value  = item.name || '';
-  document.getElementById('inp-height').value     = item.height || '';
-  document.getElementById('inp-width').value      = item.width  || '';
-  document.getElementById('inp-depth').value      = item.depth  || '';
-  document.getElementById('inp-weight').value     = item.weight || '';
-  document.getElementById('inp-item-notes').value = item.notes  || '';
+  document.getElementById('inp-item-name').value  = item.name     || '';
+  document.getElementById('inp-height').value     = item.height   || '';
+  document.getElementById('inp-width').value      = item.width    || '';
+  document.getElementById('inp-depth').value      = item.depth    || '';
+  document.getElementById('inp-weight').value     = item.weight   || '';
+  document.getElementById('inp-price-min').value  = item.priceMin || '';
+  document.getElementById('inp-price-max').value  = item.priceMax || '';
+  document.getElementById('inp-item-notes').value = item.notes    || '';
   itemUploadedMedia = [...(item.media || [])];
   isItemUploading   = false;
   setOwned(item.owned);
@@ -631,6 +650,8 @@ function setOwned(val) {
   currentItemOwned = val;
   document.getElementById('btn-owned-yes').classList.toggle('active', val);
   document.getElementById('btn-owned-no').classList.toggle('active', !val);
+  const priceField = document.getElementById('field-price-range');
+  if (priceField) priceField.style.display = val ? 'none' : '';
 }
 
 function renderItemUploadArea() {
@@ -695,13 +716,15 @@ function saveItem() {
 
   const item = {
     name,
-    owned:  currentItemOwned,
-    height: document.getElementById('inp-height').value.trim(),
-    width:  document.getElementById('inp-width').value.trim(),
-    depth:  document.getElementById('inp-depth').value.trim(),
-    weight: document.getElementById('inp-weight').value.trim(),
-    notes:  document.getElementById('inp-item-notes').value.trim(),
-    media:  [...itemUploadedMedia]
+    owned:    currentItemOwned,
+    height:   document.getElementById('inp-height').value.trim(),
+    width:    document.getElementById('inp-width').value.trim(),
+    depth:    document.getElementById('inp-depth').value.trim(),
+    weight:   document.getElementById('inp-weight').value.trim(),
+    priceMin: currentItemOwned ? '' : document.getElementById('inp-price-min').value.trim(),
+    priceMax: currentItemOwned ? '' : document.getElementById('inp-price-max').value.trim(),
+    notes:    document.getElementById('inp-item-notes').value.trim(),
+    media:    [...itemUploadedMedia]
   };
 
   if (!state.items) state.items = [];
@@ -752,6 +775,17 @@ function closeLightbox(e) {
   document.getElementById('lightbox').style.display = 'none';
   document.getElementById('lightbox-content').innerHTML = '';
   document.body.style.overflow = '';
+}
+
+// ─── FORMATAÇÃO DE PREÇO ──────────────────────────────────────
+function fmtBRL(v) {
+  return Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 });
+}
+function fmtPriceRange(min, max) {
+  if (min && max) return `${fmtBRL(min)} – ${fmtBRL(max)}`;
+  if (min)        return `a partir de ${fmtBRL(min)}`;
+  if (max)        return `até ${fmtBRL(max)}`;
+  return '';
 }
 
 // ─── UTILITÁRIOS ──────────────────────────────────────────────
